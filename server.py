@@ -1,36 +1,52 @@
+"""
+ReviewGenie – MCP server entry-point
+Day-2 version: adds ingest_pr() tool and uses shared helpers/cache.
+"""
+
+from __future__ import annotations
+
+import os
 from mcp.server.fastmcp import FastMCP
 from github import Github
-import os
-import re
 
-# --- GitHub client (reads token from env) -------------------------
+from codeview_mcp.utils.helpers import parse_pr_url          # central regex
+from codeview_mcp.utils.ingest import fetch_pr               # new Day-2 logic
+
+# ---------------------------------------------------------------------------
+# GitHub authentication
+# ---------------------------------------------------------------------------
+
 GH_TOKEN = os.getenv("GH_TOKEN")
 if not GH_TOKEN:
-    raise RuntimeError("GH_TOKEN not found in env; export it first.")
+    raise RuntimeError(
+        "GH_TOKEN not found in environment. "
+        "Create a fine-grained PAT and `export GH_TOKEN=...`."
+    )
 
-gh = Github(GH_TOKEN)
+gh = Github(GH_TOKEN)        # lightweight client for quick calls
 
-# --- MCP server instance ------------------------------------------
-mcp = FastMCP("reviewgenie")   # auto-registers tools via decorator
+# ---------------------------------------------------------------------------
+# MCP server instance
+# ---------------------------------------------------------------------------
 
+mcp = FastMCP("reviewgenie")   # auto-registers @mcp.tool() decorated callables
 
-def _parse_pr_url(url: str) -> tuple[str, int]:
-    """
-    Extract 'owner/repo' and PR number from a GitHub PR URL.
-    """
-    m = re.match(r"https://github\.com/([^/]+/[^/]+)/pull/(\d+)", url)
-    if not m:
-        raise ValueError("Not a valid GitHub PR URL")
-    return m.group(1), int(m.group(2))
+# ---------------------------------------------------------------------------
+# Tools
+# ---------------------------------------------------------------------------
 
 
 @mcp.tool()
 def ping(pr_url: str) -> dict:
     """
-    Sanity-check tool: returns title & author of the pull request.
+    Light sanity-check: return title, author and state for a GitHub PR.
+
+    Example call:
+        ping("https://github.com/psf/requests/pull/6883")
     """
-    repo_slug, pr_num = _parse_pr_url(pr_url)
+    repo_slug, pr_num = parse_pr_url(pr_url)
     pr = gh.get_repo(repo_slug).get_pull(pr_num)
+
     return {
         "title": pr.title,
         "author": pr.user.login,
@@ -38,6 +54,28 @@ def ping(pr_url: str) -> dict:
     }
 
 
+@mcp.tool()
+def ingest_pr(pr_url: str) -> dict:
+    """
+    **Day-2 core tool**
+
+    Fetch the PR's diff, per-file hunks and metadata.
+    Results are cached for 24 h in ~/.cache/reviewgenie.db.
+
+    Returns a JSON-serialisable dict:
+        {
+          title, author, state, additions, deletions, changed_files,
+          files: [ {path, is_binary, hunks:[…]} ],
+          cached: bool
+        }
+    """
+    return fetch_pr(pr_url)
+
+
+# ---------------------------------------------------------------------------
+# Entry-point
+# ---------------------------------------------------------------------------
+
 if __name__ == "__main__":
-    # Run in stdio transport; MCP host (e.g. Claude Desktop) will spawn it.
+    # Stdio transport: the MCP host will spawn this process and talk via stdin/stdout.
     mcp.run()
