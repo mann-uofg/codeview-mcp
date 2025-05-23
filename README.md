@@ -20,3 +20,10 @@
 * Added `llm.py` – 2-stage review (local CodeLlama + cloud Groq)
 * Built prompt builder (`utils/prompt.py`)
 * New MCP tool `analyze_pr(pr_url)` returns summary, smells, risk_score
+
+## Day 4 (2025-05-23)
+
+* Inline comment engine – new MCP tool `inline_comments`
+* YAML config loader (`.reviewgenie.yml`)
+* CLI harness: `python -m codeview_mcp.cli analyze <PR_URL>`
+* Added pytest smoke test
