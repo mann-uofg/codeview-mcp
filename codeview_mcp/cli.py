@@ -1,11 +1,12 @@
 import sys, argparse, json
-from server import ping, ingest_pr, analyze_pr, inline_comments
+from server import ping, ingest_pr, analyze_pr, inline_comments, generate_tests
 
 TOOLS = {
     "ping": ping,
     "ingest": ingest_pr,
     "analyze": analyze_pr,
     "inline": inline_comments,
+    "generate_tests": generate_tests,
 }
 
 def main():
