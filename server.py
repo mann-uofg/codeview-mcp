@@ -10,7 +10,9 @@ from mcp.server.fastmcp import FastMCP
 from github import Github
 
 from codeview_mcp.utils.helpers import parse_pr_url          # central regex
-from codeview_mcp.utils.ingest import fetch_pr               # new Day-2 logic
+from codeview_mcp.utils.ingest import fetch_pr              # new Day-2 logic
+from codeview_mcp.utils.prompt import build_diff_prompt
+from codeview_mcp.llm import analyze as llm_analyze
 
 # ---------------------------------------------------------------------------
 # GitHub authentication
@@ -71,6 +73,18 @@ def ingest_pr(pr_url: str) -> dict:
     """
     return fetch_pr(pr_url)
 
+def analyze_pr(pr_url: str) -> dict:
+    """
+    Run two-stage LLM review and return:
+      {summary, smells[], risk_score}
+    """
+    pr_json = fetch_pr(pr_url)
+    diff_prompt = build_diff_prompt(pr_json["files"])
+    return llm_analyze(
+        diff_prompt,
+        pr_json["additions"],
+        pr_json["deletions"],
+    )
 
 # ---------------------------------------------------------------------------
 # Entry-point
