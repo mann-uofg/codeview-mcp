@@ -27,3 +27,11 @@
 * YAML config loader (`.reviewgenie.yml`)
 * CLI harness: `python -m codeview_mcp.cli analyze <PR_URL>`
 * Added pytest smoke test
+
+## [0.1.0] – 2025-05-23
+### Added
+- `generate_tests` MCP tool opens stub-test PR
+- GitHub Actions CI (pytest)
+- CLI harness (`codeview_mcp.cli`)
+### Fixed
+- SQLite WAL to avoid 'database is locked'
