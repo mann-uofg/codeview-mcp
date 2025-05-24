@@ -11,4 +11,4 @@ jobs:
         with: {python-version: '3.11'}
       - run: |
           pip install -r requirements.txt
-          python -m codeview_mcp.cli analyze https://github.com/<YOUR-USER>/example-sandbox/pull/1
+          python -m codeview_mcp.cli analyze https://github.com/mann-uofg/example-sandbox/pull/1
