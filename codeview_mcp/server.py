@@ -55,7 +55,7 @@ def analyze_pr(pr_url: str) -> dict:
 
 
 @mcp.tool()
-def inline_comments(pr_url: str, style: str | None = None) -> dict:
+def inline_comments(pr_url: str, style: str | None = None, dry_run: bool = False) -> dict:
     cfg = load_cfg(); style = style or cfg["style"]
 
     pr_json  = fetch_pr(pr_url)
@@ -74,11 +74,23 @@ def inline_comments(pr_url: str, style: str | None = None) -> dict:
 
     for path, line_no, smell in targets:
         body = body_tmpl.format(smell=smell)
+        if dry_run:
+            posted += 1
+            continue
         try:
-            pr.create_review_comment(pr.head.sha, path, 1, body, line=line_no, side="RIGHT")
-        except TypeError:
-            pr.create_issue_comment(f"{path}:{line_no} – {body}")
+            # correct order: body first
+            pr.create_review_comment(
+                body,                  # body
+                pr.head.sha,           # commit_id
+                path,                  # file path
+                1,                     # position
+                line=line_no,
+                side="RIGHT",
+            )
+        except Exception as exc:
+            print("[warn] comment failed:", exc)
         posted += 1
+
 
     return {"posted": posted, "style": style}
 

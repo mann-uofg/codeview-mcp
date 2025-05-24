@@ -18,7 +18,7 @@ _EMBED_DIM = 384
 
 
 def _embed(text: str):
-    """Return an embedding list. Falls back to zero‑vector on any error."""
+    """Return an embedding list. Falls back to zero-vector on any error."""
     if _TEST_MODE or _client is None:
         return [0.0] * _EMBED_DIM
     try:
@@ -28,20 +28,29 @@ def _embed(text: str):
         )
         return resp.data[0].embedding
     except Exception as e:
-        # model not found / network error → degrade gracefully
         print("[warn] embedding fallback:", e)
         return [0.0] * _EMBED_DIM
 
 
 def index_files(files):
+    """Embed hunks, inserting only new IDs to avoid DuplicateIDError."""
+    # Fetch current IDs stored in Chroma once
+    try:
+        existing = set(collection.get()["ids"])
+    except Exception:
+        existing = set()
+
     docs, ids, embs = [], [], []
     for f in files:
         if f["is_binary"]:
             continue
         for h in f["hunks"]:
-            doc = json.dumps({**h, "path": f["path"]}, separators=(",", ":"))
             doc_id = hashlib.sha256((f["path"] + h["section_header"]).encode()).hexdigest()
+            if doc_id in existing:
+                continue  # skip duplicates across PRs
+            doc = json.dumps({**h, "path": f["path"]}, separators=(",", ":"))
             docs.append(doc); ids.append(doc_id); embs.append(_embed(doc))
+            existing.add(doc_id)
     if ids:
         collection.upsert(ids=ids, documents=docs, embeddings=embs)
 

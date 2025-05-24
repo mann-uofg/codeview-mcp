@@ -11,3 +11,5 @@ pytest
 astpretty
 chromadb
 pgvector
+time-machine
+rich

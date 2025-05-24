@@ -1,0 +1,10 @@
+https://github.com/python/cpython/pull/109318   # tidy importlib docs
+https://github.com/psf/requests/pull/6883       # bump setup-python in CI
+https://github.com/pallets/flask/pull/5389      # fix jsonify deprecation
+https://github.com/django/django/pull/17355     # minor type-hint cleanup
+https://github.com/numpy/numpy/pull/27147       # typo in docs build
+https://github.com/pandas-dev/pandas/pull/55696 # faster RangeIndex iter
+https://github.com/tiangolo/fastapi/pull/11629   # minor docs tweak
+https://github.com/pytest-dev/pytest/pull/11527 # restore xfail raises kw
+https://github.com/encode/starlette/pull/2035   # update license year
+https://github.com/mkdocs/mkdocs/pull/3122      # add git-requirement note
