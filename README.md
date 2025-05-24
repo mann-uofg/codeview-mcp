@@ -28,10 +28,17 @@
 * CLI harness: `python -m codeview_mcp.cli analyze <PR_URL>`
 * Added pytest smoke test
 
-## [0.1.0] – 2025-05-23
+## Day 5 [0.1.0] – 2025-05-23
 ### Added
 - `generate_tests` MCP tool opens stub-test PR
 - GitHub Actions CI (pytest)
 - CLI harness (`codeview_mcp.cli`)
 ### Fixed
 - SQLite WAL to avoid 'database is locked'
+
+## Day 6 (2025-05-27)
+
+* Upgraded `locator.py` to semantic, embedding-driven matching via ChromaDB + OpenAI (with zero-vector fallback for tests)
+* Added end-to-end integration test for `inline_comments` in `tests/test_inline.py`
+* Introduced a daily-cron GitHub Actions workflow (`.github/workflows/daily.yml`) to run `reviewgenie analyze` on open PRs at 09:00 UTC
+* Tagged **v0.2.0** release

@@ -9,3 +9,5 @@ tiktoken==0.9.0
 pyyaml
 pytest
 astpretty
+chromadb
+pgvector
