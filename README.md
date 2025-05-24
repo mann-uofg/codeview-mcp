@@ -51,3 +51,12 @@
 * Created `pyproject.toml`, set `__version__ = "1.0.0"`, and published the package to **Test PyPI** (`pip install --index-url https://test.pypi.org/simple reviewgenie-mcp`).
 * Added PyPI badge and one-line install snippet to the README.
 * Tagged and pushed **v1.0.0** – first public release!
+* **Benchmarks**: added `bench/bench.py` and `bench/urls.txt` to replay 10 historical PRs  
+  – Measures latency for `ingest`, `analyze`, and `inline` (dry-run) via subprocess  
+  – Safely skips PRs that 404/403 or CLI errors  
+  – Counts “accepted” comments and outputs `bench/benchmarks.md` with per‐PR timings and totals/averages  
+* **Robustified**: 
+  – `inline_comments` gained a `--dry-run` option  
+  – Fixed review comment arg order and added URL sanitization  
+  – Updated Chroma upsert to skip duplicate IDs  
+* **Resilience**: PR fetch and subprocess invocations now wrapped to log and skip failures rather than crash  
