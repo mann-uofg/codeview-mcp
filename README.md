@@ -36,7 +36,7 @@
 ### Fixed
 - SQLite WAL to avoid 'database is locked'
 
-## Day 6 (2025-05-27)
+## Day 6 (2025-05-24)
 
 * Upgraded `locator.py` to semantic, embedding-driven matching via ChromaDB + OpenAI (with zero-vector fallback for tests)
 * Added end-to-end integration test for `inline_comments` in `tests/test_inline.py`
