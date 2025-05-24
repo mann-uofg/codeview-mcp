@@ -37,7 +37,7 @@ jobs:
       - name: Risk check
         env:
           RG_RISK_THRESHOLD: "0.6"        # <- change threshold here
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}   # if your tools still need it
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}   # if your tools still need it
         run: |
           python -m codeview_mcp.cli check \
             "https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }}"
