@@ -7,6 +7,7 @@ TOOLS = {
     "analyze": analyze_pr,
     "inline": inline_comments,
     "generate_tests": generate_tests,
+    "check":           analyze_pr,
 }
 
 def main():
@@ -14,7 +15,19 @@ def main():
     p.add_argument("tool", choices=TOOLS.keys())
     p.add_argument("pr_url")
     p.add_argument("--style", default=None)
+    p.add_argument("--threshold", type=float,
+               help="fail if risk_score exceeds this value "
+                    "(default RG_RISK_THRESHOLD env or 0.5)")
+
     args = p.parse_args()
+    if args.tool == "check":
+        result = analyze_pr(args.pr_url)
+        threshold = args.threshold or float(os.getenv("RG_RISK_THRESHOLD", "0.5"))
+        if result["risk_score"] > threshold:
+            print(f"❌  risk_score {result['risk_score']} exceeds {threshold}")
+            sys.exit(1)
+        print(f"✅  risk_score {result['risk_score']} within limit {threshold}")
+        return
 
     fn = TOOLS[args.tool]
     kw = {"style": args.style} if args.tool == "inline" else {}

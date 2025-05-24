@@ -1,20 +1,43 @@
-name: test
+name: reviewgenie-ci
 on:
   pull_request:
     paths:
-      - '**.py'
-      - '.github/workflows/ci.yml'
+      - "**/*.py"
+      - ".github/workflows/ci.yml"
 
 jobs:
-  pytest:
+  tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-      - name: Install
-        run: |
-          python -m pip install -r requirements.txt
-      - name: Run tests
+          python-version: "3.11"
+
+      - name: Install deps
+        run: python -m pip install -r requirements.txt
+
+      - name: Run pytest
         run: pytest -q
+
+  reviewgenie:
+    needs: tests              # run only if tests pass
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: python -m pip install -r requirements.txt
+
+      - name: Risk check
+        env:
+          RG_RISK_THRESHOLD: "0.6"        # <- change threshold here
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}   # if your tools still need it
+        run: |
+          python -m codeview_mcp.cli check \
+            "https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }}"

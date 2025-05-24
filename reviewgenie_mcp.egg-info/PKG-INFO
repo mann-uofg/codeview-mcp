@@ -1,3 +1,25 @@
+Metadata-Version: 2.4
+Name: reviewgenie-mcp
+Version: 1.0.0
+Summary: ReviewGenie – Automated code-review server with MCP tooling
+Author: Mann Modi
+License: MIT
+Project-URL: Homepage, https://github.com/mann-uofg/codeview_mcp-mcp
+Project-URL: Issues, https://github.com/mann-uofg/codeview-mcp/issues
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: mcp>=1.9
+Requires-Dist: PyGithub>=2.3
+Requires-Dist: openai>=1.4
+Requires-Dist: tiktoken
+Requires-Dist: pyyaml
+Requires-Dist: sentence-transformers
+Requires-Dist: chromadb
+Requires-Dist: pgvector
+Requires-Dist: requests
+Dynamic: license-file
+
 # CodeView MCP Server
 
 *Day-wise build log starts tomorrow (Day 1).*
@@ -42,12 +64,3 @@
 * Added end-to-end integration test for `inline_comments` in `tests/test_inline.py`
 * Introduced a daily-cron GitHub Actions workflow (`.github/workflows/daily.yml`) to run `reviewgenie analyze` on open PRs at 09:00 UTC
 * Tagged **v0.2.0** release
-
-## Day 7 (2025-05-28)
-
-* Introduced **static security + quality rules** (`rules.py`) and integrated them into `llm.analyze` → each hit increases `risk_score`.
-* Added new CLI/MCP command **`check`** — fails with non-zero exit when `risk_score` exceeds a configurable threshold (`RG_RISK_THRESHOLD` or `--threshold`).
-* Updated GitHub Actions workflow to gate PRs with the risk check (job **reviewgenie**).
-* Created `pyproject.toml`, set `__version__ = "1.0.0"`, and published the package to **Test PyPI** (`pip install --index-url https://test.pypi.org/simple reviewgenie-mcp`).
-* Added PyPI badge and one-line install snippet to the README.
-* Tagged and pushed **v1.0.0** – first public release!

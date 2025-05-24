@@ -1,0 +1,37 @@
+# ─────────────────────────── pyproject.toml ───────────────────────────
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "reviewgenie-mcp"                # PyPI package name
+version = "1.0.0"                       # update when you tag
+description = "ReviewGenie – Automated code-review server with MCP tooling"
+authors = [{ name = "Mann Modi" }]
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+
+# Runtime dependencies (keep in sync with requirements.txt)
+dependencies = [
+    "mcp>=1.9",
+    "PyGithub>=2.3",
+    "openai>=1.4",
+    "tiktoken",
+    "pyyaml",
+    "sentence-transformers",
+    "chromadb",
+    "pgvector",
+    "requests",
+]
+
+[project.urls]
+Homepage   = "https://github.com/mann-uofg/codeview_mcp-mcp"
+Issues     = "https://github.com/mann-uofg/codeview-mcp/issues"
+
+[project.scripts]
+reviewgenie = "codeview_mcp.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["codeview_mcp*"]
