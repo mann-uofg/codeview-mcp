@@ -1,6 +1,6 @@
 import os
 import sys, argparse, json
-from server import ping, ingest_pr, analyze_pr, inline_comments, generate_tests
+from codeview_mcp.server import ping, ingest_pr, analyze_pr, inline_comments, generate_tests
 
 TOOLS = {
     "ping": ping,

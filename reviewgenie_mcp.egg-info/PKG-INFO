@@ -64,3 +64,12 @@ Dynamic: license-file
 * Added end-to-end integration test for `inline_comments` in `tests/test_inline.py`
 * Introduced a daily-cron GitHub Actions workflow (`.github/workflows/daily.yml`) to run `reviewgenie analyze` on open PRs at 09:00 UTC
 * Tagged **v0.2.0** release
+
+## Day 7 (2025-05-24)
+
+* Introduced **static security + quality rules** (`rules.py`) and integrated them into `llm.analyze` → each hit increases `risk_score`.
+* Added new CLI/MCP command **`check`** — fails with non-zero exit when `risk_score` exceeds a configurable threshold (`RG_RISK_THRESHOLD` or `--threshold`).
+* Updated GitHub Actions workflow to gate PRs with the risk check (job **reviewgenie**).
+* Created `pyproject.toml`, set `__version__ = "1.0.0"`, and published the package to **Test PyPI** (`pip install --index-url https://test.pypi.org/simple reviewgenie-mcp`).
+* Added PyPI badge and one-line install snippet to the README.
+* Tagged and pushed **v1.0.0** – first public release!

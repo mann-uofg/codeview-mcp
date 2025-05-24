@@ -8,7 +8,7 @@ RULES = [
     {
         "id": "SEC002",
         "name": "eval() usage",
-        "pattern": r"\\beval\\(",
+        "pattern": r"\\beval\\(.*?\\)",
         "severity": 0.8,
     },
     {

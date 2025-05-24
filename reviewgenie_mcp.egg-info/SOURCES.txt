@@ -7,6 +7,7 @@ codeview_mcp/cli.py
 codeview_mcp/config.py
 codeview_mcp/llm.py
 codeview_mcp/rules.py
+codeview_mcp/server.py
 codeview_mcp/cache/__init__.py
 codeview_mcp/cache/db.py
 codeview_mcp/utils/__init__.py

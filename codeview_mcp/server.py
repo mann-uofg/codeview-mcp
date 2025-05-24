@@ -1,10 +1,12 @@
 """
-ReviewGenie MCP server – Day‑6 edition
-Fixes inline_comments(): uses positional args for create_review_comment and
-falls back to create_issue_comment when review comments aren’t allowed.
+ReviewGenie MCP server – lazy‑load GitHub client
+Long‑term fix: GH_TOKEN is fetched only when a tool actually needs it,
+so commands like `reviewgenie analyze` or `check` can run without exporting
+GH_TOKEN.
 """
 from __future__ import annotations
 import os, re
+from typing import Callable
 from mcp.server.fastmcp import FastMCP
 from github import Github
 
@@ -16,19 +18,27 @@ from codeview_mcp.llm import analyze as llm_analyze
 from codeview_mcp.utils.locator import locate
 from codeview_mcp.utils.testgen import draft_tests
 
-GH_TOKEN = os.getenv("GH_TOKEN")
-if not GH_TOKEN:
-    raise RuntimeError("GH_TOKEN env‑var missing")
+# ── lazy GitHub client ───────────────────────────────────────────────────
 
-gh = Github(GH_TOKEN)
+def gh_client() -> Github:
+    token = os.getenv("GH_TOKEN")
+    if not token:
+        raise RuntimeError(
+            "GH_TOKEN env‑var missing for GitHub operations. "
+            "Create a fine‑grained PAT and export GH_TOKEN."
+        )
+    return Github(token)
+
+# ── MCP server instance ─────────────────────────────────────────────────
 
 mcp = FastMCP("reviewgenie")
 
+# ── Tools ───────────────────────────────────────────────────────────────
 
 @mcp.tool()
 def ping(pr_url: str) -> dict:
-    repo, num = parse_pr_url(pr_url)
-    pr = gh.get_repo(repo).get_pull(num)
+    repo_slug, pr_num = parse_pr_url(pr_url)
+    pr = gh_client().get_repo(repo_slug).get_pull(pr_num)
     return {"title": pr.title, "author": pr.user.login, "state": pr.state}
 
 
@@ -53,7 +63,7 @@ def inline_comments(pr_url: str, style: str | None = None) -> dict:
     targets  = locate(analysis["smells"], pr_json["files"])
 
     repo_slug, pr_num = parse_pr_url(pr_url)
-    pr  = gh.get_repo(repo_slug).get_pull(pr_num)
+    pr  = gh_client().get_repo(repo_slug).get_pull(pr_num)
 
     posted = 0
     body_tmpl = {
@@ -65,10 +75,8 @@ def inline_comments(pr_url: str, style: str | None = None) -> dict:
     for path, line_no, smell in targets:
         body = body_tmpl.format(smell=smell)
         try:
-            # PyGitHub signature: commit_sha, path, position, body, line=?, side=?
             pr.create_review_comment(pr.head.sha, path, 1, body, line=line_no, side="RIGHT")
         except TypeError:
-            # Some repos / test envs: fall back to issue‑level comment
             pr.create_issue_comment(f"{path}:{line_no} – {body}")
         posted += 1
 
@@ -85,8 +93,8 @@ def generate_tests(pr_url: str, framework: str = "pytest") -> dict:
     if not stubs:
         return {"test_pr": None, "files_added": 0}
 
-    pr   = gh.get_repo(repo_slug).get_pull(pr_num)
-    repo = gh.get_repo(repo_slug)
+    pr    = gh_client().get_repo(repo_slug).get_pull(pr_num)
+    repo  = gh_client().get_repo(repo_slug)
     branch = f"reviewgenie/tests-{pr_num}"
     repo.create_git_ref(ref=f"refs/heads/{branch}", sha=pr.head.sha)
 
