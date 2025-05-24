@@ -43,7 +43,7 @@
 * Introduced a daily-cron GitHub Actions workflow (`.github/workflows/daily.yml`) to run `reviewgenie analyze` on open PRs at 09:00 UTC
 * Tagged **v0.2.0** release
 
-## Day 7 (2025-05-28)
+## Day 7 (2025-05-24)
 
 * Introduced **static security + quality rules** (`rules.py`) and integrated them into `llm.analyze` → each hit increases `risk_score`.
 * Added new CLI/MCP command **`check`** — fails with non-zero exit when `risk_score` exceeds a configurable threshold (`RG_RISK_THRESHOLD` or `--threshold`).
