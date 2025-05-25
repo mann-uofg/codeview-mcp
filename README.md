@@ -1,4 +1,3 @@
-````markdown
 <p align="center">
   <img src="https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/reviewgenie-mcp/main/docs/logo.svg" height="120">
 </p>
