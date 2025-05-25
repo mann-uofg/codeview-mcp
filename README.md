@@ -1,69 +1,125 @@
-# CodeView MCP Server
+````markdown
+<p align="center">
+  <img src="https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/reviewgenie-mcp/main/docs/logo.svg" height="120">
+</p>
 
-*Day-wise build log starts tomorrow (Day 1).*
+# ReviewGenie 🪄  
+_Powered by MCP, CodeLlama-13B (local), Llama-3-8B (cloud)_
 
-## Day 1 (2025-05-22 (delayed, supposed to be 21st))
+[![PyPI](https://img.shields.io/pypi/v/reviewgenie-mcp)](https://pypi.org/project/reviewgenie-mcp/)  
+[![CI](https://github.com/YOUR_GITHUB_USERNAME/reviewgenie-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_GITHUB_USERNAME/reviewgenie-mcp/actions)
 
-* Added Python deps: PyGitHub, patch-ng, python-dotenv
-* Implemented `server.py` with FastMCP skeleton
-* Built & tested `ping` tool – returns PR metadata
+---
 
-## Day 2 (2025-05-22)
+## 1 Why
 
-* Added SQLite cache (`codeview_mcp/cache/db.py`)
-* `fetch_pr()` parses diff via **unidiff** and caches JSON
-* New MCP tool `ingest_pr` exposed in `server.py`
-* Verified on PR #6883 – 24 h cache hit works
+Modern PRs are huge—security issues or performance regressions slip through.  
+ReviewGenie does a **30-second AI review**:
 
-## Day 3 (2025-05-23)
+- Static regex rules → critical smells  
+- Local LLM → quick heuristics (no cloud cost)  
+- Cloud LLM → human-style summary & risk score  
+- Inline comments you can accept or ignore with one click
 
-* Added `llm.py` – 2-stage review (local CodeLlama + cloud Groq)
-* Built prompt builder (`utils/prompt.py`)
-* New MCP tool `analyze_pr(pr_url)` returns summary, smells, risk_score
+---
 
-## Day 4 (2025-05-23)
+## 2 What it does
 
-* Inline comment engine – new MCP tool `inline_comments`
-* YAML config loader (`.reviewgenie.yml`)
-* CLI harness: `python -m codeview_mcp.cli analyze <PR_URL>`
-* Added pytest smoke test
+| Tool             | Purpose                                           | Typical latency |
+|------------------|---------------------------------------------------|-----------------|
+| `ping`           | Sanity check: show title/author/state             | 0.3 s           |
+| `ingest`         | Fetch diff JSON + SQLite cache                    | 1–2 s           |
+| `analyze`        | Summary, smells[], rule_hits[], risk_score ∈ [0–1] | 6–10 s          |
+| `inline`         | Posts or previews comments                        | 0.5 s           |
+| `check`          | CI gate (`risk_score > threshold`)                | 0.2 s           |
+| `generate_tests` | Stub pytest files + open PR                       | 4–6 s           |
 
-## Day 5 [0.1.0] – 2025-05-23
-### Added
-- `generate_tests` MCP tool opens stub-test PR
-- GitHub Actions CI (pytest)
-- CLI harness (`codeview_mcp.cli`)
-### Fixed
-- SQLite WAL to avoid 'database is locked'
+> **Privacy note**: only the diff snippet is sent to Groq; full code never leaves your machine.
 
-## Day 6 (2025-05-24)
+---
 
-* Upgraded `locator.py` to semantic, embedding-driven matching via ChromaDB + OpenAI (with zero-vector fallback for tests)
-* Added end-to-end integration test for `inline_comments` in `tests/test_inline.py`
-* Introduced a daily-cron GitHub Actions workflow (`.github/workflows/daily.yml`) to run `reviewgenie analyze` on open PRs at 09:00 UTC
-* Tagged **v0.2.0** release
+## 3 Quick Start (5 min)
 
-## Day 7 (2025-05-24)
+```bash
+git clone https://github.com/mann-uofg/codeview-mcp.git
+cd codeview-mcp
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+pip install -e .
 
-* Introduced **static security + quality rules** (`rules.py`) and integrated them into `llm.analyze` → each hit increases `risk_score`.
-* Added new CLI/MCP command **`check`** — fails with non-zero exit when `risk_score` exceeds a configurable threshold (`RG_RISK_THRESHOLD` or `--threshold`).
-* Updated GitHub Actions workflow to gate PRs with the risk check (job **reviewgenie**).
-* Created `pyproject.toml`, set `__version__ = "1.0.0"`, and published the package to **Test PyPI** (`pip install --index-url https://test.pypi.org/simple reviewgenie-mcp`).
-* Added PyPI badge and one-line install snippet to the README.
-* Tagged and pushed **v1.0.0** – first public release!
-* **Benchmarks**: added `bench/bench.py` and `bench/urls.txt` to replay 10 historical PRs  
-  – Measures latency for `ingest`, `analyze`, and `inline` (dry-run) via subprocess  
-  – Safely skips PRs that 404/403 or CLI errors  
-  – Counts “accepted” comments and outputs `bench/benchmarks.md` with per‐PR timings and totals/averages  
-* **Robustified**: 
-  – `inline_comments` gained a `--dry-run` option  
-  – Fixed review comment arg order and added URL sanitization  
-  – Updated Chroma upsert to skip duplicate IDs  
-* **Resilience**: PR fetch and subprocess invocations now wrapped to log and skip failures rather than crash  
+# one-liner smoke
+reviewgenie/codeview ping https://github.com/psf/requests/pull/6883
+````
 
-## Day 8 (2025-05-25)
+**Store secrets once** (env-var OR keyring):
 
-* **Secrets & keyring** – added `codeview_mcp/secret.py` so GH_TOKEN can come from an env-var or the OS keyring (never printed to logs).  
-* **Resilient GitHub calls** – introduced `codeview_mcp/github_backoff.py` with a `gh_call()` wrapper that applies exponential back-off on 403/5xx errors.  
-* **Tracing** – wired up OpenTelemetry spans around every MCP tool via `@traced` (console exporter by default).  
-* **Dropped Docker** – decided to focus on a pure-Python quickstart for recruiters; removed Dockerfile from the main flow.
+```python
+from codeview_mcp.secret import set_in_keyring
+
+set_in_keyring("GH_TOKEN",        "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")    #GitHub PAT  
+set_in_keyring("OPENAI_API_KEY",  "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")              # Groq/OpenAI key  
+set_in_keyring("OPENAI_BASE_URL", "https://api.groq.com/openai/v1")
+```
+
+Full tutorial: [`docs/QUICKSTART.md`](docs/QUICKSTART.md)
+
+---
+
+## 4 Architecture
+
+![pipeline](docs/arch_diagram.png)
+
+* **SQLite** → diff cache (24 h)
+* **ChromaDB** → hunk embeddings
+* **Back-off** → GitHub retries (403/5xx)
+* **Tracing** → OpenTelemetry spans
+* Detailed diagram: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+
+---
+
+## 5 Benchmark
+
+See [`bench/benchmarks.md`](bench/benchmarks.md):
+10 popular OSS PRs → avg **⏱ 8.1 s** analyze, **💰 \$0.0008** Groq cost, **96 %** comment acceptance.
+
+---
+
+## 6 Docs
+
+* API schema:    [`docs/API_SCHEMA.json`](docs/API_SCHEMA.json)
+* CLI reference: [`docs/USAGE.md`](docs/USAGE.md)
+* Config & env:  [`docs/CONFIGURATION.md`](docs/CONFIGURATION.md)
+* Contributing:  [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md)
+
+---
+
+## 7 Day-by-Day Log
+
+| Day | Highlight                                    |
+| --- | -------------------------------------------- |
+| 0   | Project skeleton, MCP “hello”                |
+| 1   | GitHub ingest + diff cache                   |
+| 2   | Local LLM smells + cloud risk                |
+| 3   | Inline locator + ChromaDB                    |
+| 4   | CLI wrapper + risk gate                      |
+| 5   | Stub test generator                          |
+| 6   | Vector de-dup fix, CI passing                |
+| 7   | `bench.py`: eval & markdown report           |
+| 8   | Secrets via keyring, back-off, OpenTelemetry |
+| 9   | Full docs suite & OpenAPI schema             |
+
+Full changelog: [`docs/CHANGELOG.md`](docs/CHANGELOG.md)
+
+---
+
+## 8 Roadmap
+
+* 🚦 Live GitHub Action auto-labels “High-Risk” PRs
+* 🖼 Web UI with trace explorer
+* 🐳 (Optional) Docker image for k8s / GHCR
+* 🕵️‍♂️ Multi-language support (Go, Rust)
+
+> Star the repo ⭐ & drop an issue if you’d like to help!
+
+```
+```

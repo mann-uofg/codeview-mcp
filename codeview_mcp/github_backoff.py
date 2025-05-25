@@ -1,18 +1,17 @@
-import backoff, github
-from codeview_mcp.secret import require
+import backoff
 from github import Github
+from github.GithubException import GithubException   # ← correct import
+from codeview_mcp.secret import require
 
-def _is_retryable(exc):
-    # 403 secondary-rate-limit or any 5xx
-    return isinstance(exc, github.GithubException.GithubException) and \
-           exc.status in (403, 500, 502, 503)
+# retryable statuses
+_RETRY = {403, 500, 502, 503}
 
 @backoff.on_exception(backoff.expo,
-                      github.GithubException.GithubException,
+                      GithubException,
                       max_time=60,
-                      giveup=lambda e: not _is_retryable(e))
+                      giveup=lambda e: e.status not in _RETRY)
 def gh_call(func, *args, **kwargs):
-    """Call a PyGitHub function with exponential back-off."""
+    """Call PyGitHub func with exponential back-off on 403 / 5xx."""
     return func(*args, **kwargs)
 
 def gh_client() -> Github:
