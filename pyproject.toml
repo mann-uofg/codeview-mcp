@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "reviewgenie-mcp"                # PyPI package name
-version = "1.0.0"                       # update when you tag
+version = "1.2.0"                      # update when you tag
 description = "ReviewGenie – Automated code-review server with MCP tooling"
 authors = [{ name = "Mann Modi" }]
 readme = "README.md"
