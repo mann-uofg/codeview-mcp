@@ -1,12 +1,12 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/reviewgenie-mcp/main/docs/logo.svg" height="120">
+  <img src="https://raw.githubusercontent.com/mann-uofg/codeview-mcp/main/docs/logo.svg" height="120">
 </p>
 
 # CodeView MCP 🪄  
 _Powered by MCP, CodeLlama-13B (local), Llama-3-8B (cloud)_
 
-[![PyPI](https://img.shields.io/pypi/v/reviewgenie-mcp)](https://pypi.org/project/reviewgenie-mcp/)  
-[![CI](https://github.com/YOUR_GITHUB_USERNAME/reviewgenie-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_GITHUB_USERNAME/reviewgenie-mcp/actions)
+[![PyPI](https://img.shields.io/pypi/v/codeview-mcp)](https://pypi.org/project/codeview-mcp/)  
+[![CI](https://github.com/mann-uofg/codeview-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/mann-uofg/codeview-mcp/actions)
 
 ---
 
