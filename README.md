@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/reviewgenie-mcp/main/docs/logo.svg" height="120">
 </p>
 
-# ReviewGenie 🪄  
+# CodeView MCP 🪄  
 _Powered by MCP, CodeLlama-13B (local), Llama-3-8B (cloud)_
 
 [![PyPI](https://img.shields.io/pypi/v/reviewgenie-mcp)](https://pypi.org/project/reviewgenie-mcp/)  
