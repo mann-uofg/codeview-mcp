@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="https://raw.githubusercontent.com/mann-uofg/codeview-mcp/main/docs/logo.svg" height="120">
-</p>
-
 # CodeView MCP 🪄  
 _Powered by MCP, CodeLlama-13B (local), Llama-3-8B (cloud)_
 
@@ -65,8 +61,6 @@ Full tutorial: [`docs/QUICKSTART.md`](docs/QUICKSTART.md)
 ---
 
 ## 4 Architecture
-
-![pipeline](docs/arch_diagram.png)
 
 * **SQLite** → diff cache (24 h)
 * **ChromaDB** → hunk embeddings
