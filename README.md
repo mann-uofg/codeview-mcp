@@ -62,6 +62,8 @@ Full tutorial: [`docs/QUICKSTART.md`](docs/QUICKSTART.md)
 
 ## 4 Architecture
 
+![pipeline](docs/arch_diagram.png)
+
 * **SQLite** → diff cache (24 h)
 * **ChromaDB** → hunk embeddings
 * **Back-off** → GitHub retries (403/5xx)
