@@ -56,7 +56,7 @@ reviewgenie/codeview ping https://github.com/psf/requests/pull/6883
 ```python
 from codeview_mcp.secret import set_in_keyring
 
-set_in_keyring("GH_TOKEN",        "github_pat_xxxxxxxxxxxxx")    #GitHub PAT  
+set_in_keyring("GH_TOKEN",        "ghb_xxxxxxxxxxxxx")    #GitHub PAT  
 set_in_keyring("OPENAI_API_KEY",  "gsk_xxxxxxxxxxx")              # Groq/OpenAI key  
 set_in_keyring("OPENAI_BASE_URL", "https://api.groq.com/openai/v1")
 ```
