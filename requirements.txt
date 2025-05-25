@@ -13,3 +13,7 @@ chromadb
 pgvector
 time-machine
 rich
+keyring
+backoff
+opentelemetry-sdk
+opentelemetry-api

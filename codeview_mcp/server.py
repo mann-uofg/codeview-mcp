@@ -1,15 +1,18 @@
 """
-ReviewGenie MCP server – lazy‑load GitHub client
-Long‑term fix: GH_TOKEN is fetched only when a tool actually needs it,
-so commands like `reviewgenie analyze` or `check` can run without exporting
-GH_TOKEN.
+ReviewGenie MCP server – Day-8 hardened
+* GH calls wrapped with exponential-backoff (gh_call)
+* Token loaded lazily via codeview_mcp.secret.require
+* --dry-run flag for inline_comments
+* OpenTelemetry traces via @traced
 """
+
 from __future__ import annotations
-import os, re
-from typing import Callable
+import os, re, functools
 from mcp.server.fastmcp import FastMCP
 from github import Github
 
+from codeview_mcp.secret import require
+from codeview_mcp.github_backoff import gh_call
 from codeview_mcp.config import load as load_cfg
 from codeview_mcp.utils.helpers import parse_pr_url
 from codeview_mcp.utils.ingest import fetch_pr
@@ -17,105 +20,112 @@ from codeview_mcp.utils.prompt import build_diff_prompt
 from codeview_mcp.llm import analyze as llm_analyze
 from codeview_mcp.utils.locator import locate
 from codeview_mcp.utils.testgen import draft_tests
+from codeview_mcp.otel import tracer   # console exporter by default
 
-# ── lazy GitHub client ───────────────────────────────────────────────────
+# ── helpers ─────────────────────────────────────────────────────────────
 
 def gh_client() -> Github:
-    token = os.getenv("GH_TOKEN")
-    if not token:
-        raise RuntimeError(
-            "GH_TOKEN env‑var missing for GitHub operations. "
-            "Create a fine‑grained PAT and export GH_TOKEN."
-        )
-    return Github(token)
+    """Return a lazily-constructed, authenticated PyGitHub client."""
+    return Github(require("GH_TOKEN"))   # raises if token missing
 
-# ── MCP server instance ─────────────────────────────────────────────────
+def traced(fn):
+    """Wrap fn in an OpenTelemetry span & print simple console trace."""
+    @functools.wraps(fn)
+    def wrapper(*args, **kw):
+        with tracer.start_as_current_span(fn.__name__):
+            print(f"→ {fn.__name__}{args[1:] if args else ''} {kw}")
+            out = fn(*args, **kw)
+            print(f"← {fn.__name__} → {out}")
+            return out
+    return wrapper
 
+# ── MCP server instance ────────────────────────────────────────────────
 mcp = FastMCP("reviewgenie")
 
-# ── Tools ───────────────────────────────────────────────────────────────
+# ── Tools ──────────────────────────────────────────────────────────────
 
 @mcp.tool()
+@traced
 def ping(pr_url: str) -> dict:
-    repo_slug, pr_num = parse_pr_url(pr_url)
-    pr = gh_client().get_repo(repo_slug).get_pull(pr_num)
+    repo, num = parse_pr_url(pr_url)
+    pr = gh_call(gh_client().get_repo(repo).get_pull, num)
     return {"title": pr.title, "author": pr.user.login, "state": pr.state}
 
-
 @mcp.tool()
+@traced
 def ingest_pr(pr_url: str) -> dict:
     return fetch_pr(pr_url)
 
-
 @mcp.tool()
+@traced
 def analyze_pr(pr_url: str) -> dict:
     pr_json = fetch_pr(pr_url)
     prompt  = build_diff_prompt(pr_json["files"])
     return llm_analyze(prompt, pr_json["additions"], pr_json["deletions"])
 
-
 @mcp.tool()
-def inline_comments(pr_url: str, style: str | None = None, dry_run: bool = False) -> dict:
+@traced
+def inline_comments(pr_url: str,
+                    style: str | None = None,
+                    dry_run: bool = False) -> dict:
     cfg = load_cfg(); style = style or cfg["style"]
 
     pr_json  = fetch_pr(pr_url)
     analysis = analyze_pr(pr_url)
     targets  = locate(analysis["smells"], pr_json["files"])
 
-    repo_slug, pr_num = parse_pr_url(pr_url)
-    pr  = gh_client().get_repo(repo_slug).get_pull(pr_num)
+    repo, num = parse_pr_url(pr_url)
+    pr = gh_call(gh_client().get_repo(repo).get_pull, num)
 
-    posted = 0
     body_tmpl = {
         "nitpick":  "- *Nitpick*: {smell}",
         "security": "⚠️ **Security**: {smell}",
         "perf":     "⏱ **Performance**: {smell}",
     }[style]
 
+    posted = 0
     for path, line_no, smell in targets:
         body = body_tmpl.format(smell=smell)
         if dry_run:
             posted += 1
             continue
         try:
-            # correct order: body first
-            pr.create_review_comment(
-                body,                  # body
-                pr.head.sha,           # commit_id
-                path,                  # file path
-                1,                     # position
-                line=line_no,
-                side="RIGHT",
-            )
+            gh_call(pr.create_review_comment,
+                    body, pr.head.sha, path, 1,
+                    line=line_no, side="RIGHT")
         except Exception as exc:
             print("[warn] comment failed:", exc)
         posted += 1
-
-
     return {"posted": posted, "style": style}
 
-
 @mcp.tool()
+@traced
 def generate_tests(pr_url: str, framework: str = "pytest") -> dict:
     if framework != "pytest":
         raise ValueError("Only pytest supported")
 
-    repo_slug, pr_num = parse_pr_url(pr_url)
-    stubs = draft_tests(repo_slug, pr_num)
+    repo, num = parse_pr_url(pr_url)
+    stubs = draft_tests(repo, num)
     if not stubs:
         return {"test_pr": None, "files_added": 0}
 
-    pr    = gh_client().get_repo(repo_slug).get_pull(pr_num)
-    repo  = gh_client().get_repo(repo_slug)
-    branch = f"reviewgenie/tests-{pr_num}"
-    repo.create_git_ref(ref=f"refs/heads/{branch}", sha=pr.head.sha)
+    gh    = gh_client()
+    repoo = gh_call(gh.get_repo, repo)
+    pr    = gh_call(repoo.get_pull, num)
+
+    branch = f"reviewgenie/tests-{num}"
+    gh_call(repoo.create_git_ref, ref=f"refs/heads/{branch}", sha=pr.head.sha)
 
     for path, content in stubs.items():
-        repo.create_file(path, f"Add stub tests for PR #{pr_num}", content, branch=branch)
+        gh_call(repoo.create_file,
+                path, f"Add stub tests for PR #{num}", content, branch=branch)
 
-    tp = repo.create_pull(title=f"Stub tests for #{pr_num}", body="Generated by ReviewGenie", head=branch, base=pr.head.ref)
+    tp = gh_call(repoo.create_pull,
+                 title=f"Stub tests for #{num}",
+                 body="Generated by ReviewGenie",
+                 head=branch, base=pr.head.ref)
     return {"test_pr": tp.html_url, "files_added": len(stubs)}
 
-
+# ── entry-point ────────────────────────────────────────────────────────
 if __name__ == "__main__":
     mcp.run()

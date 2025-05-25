@@ -60,3 +60,10 @@
   – Fixed review comment arg order and added URL sanitization  
   – Updated Chroma upsert to skip duplicate IDs  
 * **Resilience**: PR fetch and subprocess invocations now wrapped to log and skip failures rather than crash  
+
+## Day 8 (2025-05-25)
+
+* **Secrets & keyring** – added `codeview_mcp/secret.py` so GH_TOKEN can come from an env-var or the OS keyring (never printed to logs).  
+* **Resilient GitHub calls** – introduced `codeview_mcp/github_backoff.py` with a `gh_call()` wrapper that applies exponential back-off on 403/5xx errors.  
+* **Tracing** – wired up OpenTelemetry spans around every MCP tool via `@traced` (console exporter by default).  
+* **Dropped Docker** – decided to focus on a pure-Python quickstart for recruiters; removed Dockerfile from the main flow.

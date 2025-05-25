@@ -20,7 +20,7 @@ def main():
                help="fail if risk_score exceeds this value "
                     "(default RG_RISK_THRESHOLD env or 0.5)")
     p.add_argument("--dry-run", action="store_true",
-                   help="for inline: compute but do not post comments")
+               help="for 'inline' tool: compute targets but do not post comments")
 
     args = p.parse_args()
     if args.tool == "check":
@@ -31,8 +31,10 @@ def main():
             sys.exit(1)
         print(f"✅  risk_score {result['risk_score']} within limit {threshold}")
         return
-    if args.tool == "inline":
+    elif args.tool == "inline":
         kw = {"style": args.style, "dry_run": args.dry_run}
+        out = inline_comments(args.pr_url, **kw)
+
     fn = TOOLS[args.tool]
     kw = {"style": args.style} if args.tool == "inline" else {}
     out = fn(args.pr_url, **kw) if kw else fn(args.pr_url)
