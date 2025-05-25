@@ -115,6 +115,3 @@ Full changelog: [`docs/CHANGELOG.md`](docs/CHANGELOG.md)
 * 🕵️‍♂️ Multi-language support (Go, Rust)
 
 > Star the repo ⭐ & drop an issue if you’d like to help!
-
-```
-```

@@ -5,8 +5,11 @@ setup.cfg
 codeview_mcp/__init__.py
 codeview_mcp/cli.py
 codeview_mcp/config.py
+codeview_mcp/github_backoff.py
 codeview_mcp/llm.py
+codeview_mcp/otel.py
 codeview_mcp/rules.py
+codeview_mcp/secret.py
 codeview_mcp/server.py
 codeview_mcp/cache/__init__.py
 codeview_mcp/cache/db.py
