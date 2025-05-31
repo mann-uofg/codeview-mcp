@@ -1,5 +1,5 @@
 # CodeView MCP 🪄  
-_Powered by MCP, CodeLlama-13B (local), Llama-3-8B (cloud)_
+_Powered by MCP, CodeLlama-13B (local), Llama-3.1-8b-instant (cloud)_
 
 [![PyPI](https://img.shields.io/pypi/v/codeview-mcp)](https://pypi.org/project/codeview-mcp/)  
 [![CI](https://github.com/mann-uofg/codeview-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/mann-uofg/codeview-mcp/actions)

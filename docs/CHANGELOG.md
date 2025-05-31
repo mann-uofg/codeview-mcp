@@ -49,3 +49,8 @@ All notable changes, organized by development day.
 - Published complete `docs/` suite: Architecture, Quickstart, Usage, Config, Contributing, API schema  
 - Added `scripts/export_schema.py` to generate `docs/API_SCHEMA.json`  
 - Polished `README.md` and finalized changelog entries
+
+## [1.3.0] – 2025-05-31
+### Changed
+* Switched Groq default model from `llama3-8b-8192` → `llama-3.1-8b-instant`
+* Added `RG_CLOUD_MODEL` env-var to override at runtime

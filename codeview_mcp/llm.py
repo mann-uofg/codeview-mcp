@@ -15,7 +15,8 @@ from codeview_mcp.rules import RULES  # static regex rules
 # ── config ───────────────────────────────────────────────────────────────
 LOCAL_URL    = "http://localhost:11434/api/generate"
 LOCAL_MODEL  = "codellama:13b-instruct"
-CLOUD_MODEL  = "llama3-8b-8192"
+# Groq 2025-05 deprecation: migrate to llama-3.1-8b-instant
+CLOUD_MODEL = os.getenv("RG_CLOUD_MODEL", "llama-3.1-8b-instant")
 LOCAL_TIMEOUT = int(os.getenv("CODEVIEW_LOCAL_TIMEOUT", "45"))
 
 _API_KEY  = os.getenv("OPENAI_API_KEY")
