@@ -62,7 +62,7 @@ Full tutorial: [`docs/QUICKSTART.md`](docs/QUICKSTART.md)
 
 ## 4 Architecture
 
-![pipeline](docs/arch_diagram.png)
+![pipeline](docs/arch_pipeline.png)
 
 * **SQLite** → diff cache (24 h)
 * **ChromaDB** → hunk embeddings
