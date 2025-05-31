@@ -26,5 +26,6 @@ reviewgenie_mcp.egg-info/dependency_links.txt
 reviewgenie_mcp.egg-info/entry_points.txt
 reviewgenie_mcp.egg-info/requires.txt
 reviewgenie_mcp.egg-info/top_level.txt
+tests/test_analyze_offline.py
 tests/test_cli.py
-tests/test_inline.py
+tests/test_cli_smoke.py

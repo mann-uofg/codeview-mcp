@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: reviewgenie-mcp
-Version: 1.2.0
+Version: 1.3.0
 Summary: ReviewGenie – Automated code-review server with MCP tooling
 Author: Mann Modi
 License: MIT
@@ -21,7 +21,7 @@ Requires-Dist: requests
 Dynamic: license-file
 
 # CodeView MCP 🪄  
-_Powered by MCP, CodeLlama-13B (local), Llama-3-8B (cloud)_
+_Powered by MCP, CodeLlama-13B (local), Llama-3.1-8b-instant (cloud)_
 
 [![PyPI](https://img.shields.io/pypi/v/codeview-mcp)](https://pypi.org/project/codeview-mcp/)  
 [![CI](https://github.com/mann-uofg/codeview-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/mann-uofg/codeview-mcp/actions)
@@ -74,7 +74,7 @@ reviewgenie/codeview ping https://github.com/psf/requests/pull/6883
 from codeview_mcp.secret import set_in_keyring
 
 set_in_keyring("GH_TOKEN",        "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")    #GitHub PAT  
-set_in_keyring("OPENAI_API_KEY",  "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")              # Groq/OpenAI key  
+set_in_keyring("OPENAI_API_KEY",  "gsk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")              # Groq/OpenAI key  
 set_in_keyring("OPENAI_BASE_URL", "https://api.groq.com/openai/v1")
 ```
 
@@ -84,7 +84,7 @@ Full tutorial: [`docs/QUICKSTART.md`](docs/QUICKSTART.md)
 
 ## 4 Architecture
 
-![pipeline](docs/arch_diagram.png)
+![pipeline](docs/arch_pipeline.png)
 
 * **SQLite** → diff cache (24 h)
 * **ChromaDB** → hunk embeddings
@@ -137,6 +137,3 @@ Full changelog: [`docs/CHANGELOG.md`](docs/CHANGELOG.md)
 * 🕵️‍♂️ Multi-language support (Go, Rust)
 
 > Star the repo ⭐ & drop an issue if you’d like to help!
-
-```
-```
