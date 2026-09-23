@@ -1,2 +1,0 @@
-[console_scripts]
-reviewgenie = codeview_mcp.cli:main

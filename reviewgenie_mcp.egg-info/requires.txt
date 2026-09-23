@@ -1,9 +1,0 @@
-mcp>=1.9
-PyGithub>=2.3
-openai>=1.4
-tiktoken
-pyyaml
-sentence-transformers
-chromadb
-pgvector
-requests
