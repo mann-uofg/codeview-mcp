@@ -1,37 +1,105 @@
-# ─────────────────────────── pyproject.toml ───────────────────────────
 [build-system]
-requires = ["setuptools>=64", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
 
 [project]
-name = "reviewgenie-mcp"                # PyPI package name
-version = "1.3.0"                      # update when you tag
-description = "ReviewGenie – Automated code-review server with MCP tooling"
-authors = [{ name = "Mann Modi" }]
+name = "reviewgenie"
+dynamic = ["version"]
+description = "AI code review for pull requests and local changes: an MCP server, a CLI and a GitHub Action, running on free-tier models."
 readme = "README.md"
-license = { text = "MIT" }
-requires-python = ">=3.10"
-
-# Runtime dependencies (keep in sync with requirements.txt)
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Mann Modi" }]
+requires-python = ">=3.11"
+keywords = ["mcp", "model-context-protocol", "code-review", "ai", "llm", "github", "pull-request", "static-analysis", "security", "sarif"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Security",
+    "Typing :: Typed",
+]
 dependencies = [
-    "mcp>=1.9",
-    "PyGithub>=2.3",
-    "openai>=1.4",
-    "tiktoken",
-    "pyyaml",
-    "sentence-transformers",
-    "chromadb",
-    "pgvector",
-    "requests",
+    "mcp>=2.2,<3",
+    "httpx>=0.28",
+    "pydantic>=2.11",
+    "typer>=0.20",
+    "rich>=14",
+    "platformdirs>=4.3",
 ]
 
 [project.urls]
-Homepage   = "https://github.com/mann-uofg/codeview_mcp-mcp"
-Issues     = "https://github.com/mann-uofg/codeview-mcp/issues"
+Homepage = "https://github.com/mann-uofg/codeview-mcp"
+Documentation = "https://github.com/mann-uofg/codeview-mcp#readme"
+Issues = "https://github.com/mann-uofg/codeview-mcp/issues"
+Changelog = "https://github.com/mann-uofg/codeview-mcp/blob/main/CHANGELOG.md"
 
 [project.scripts]
-reviewgenie = "codeview_mcp.cli:main"
+reviewgenie = "reviewgenie.cli:app"
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["codeview_mcp*"]
+[dependency-groups]
+dev = [
+    "pytest>=9",
+    "pytest-asyncio>=1.2",
+    "pytest-cov>=7",
+    "respx>=0.22",
+    "ruff>=0.14",
+    "mypy>=1.18",
+    "bandit>=1.8",
+    "pip-audit>=2.9",
+]
+
+[tool.hatch.version]
+path = "src/reviewgenie/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/reviewgenie"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/reviewgenie", "tests", "README.md", "LICENSE", "CHANGELOG.md"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = "-ra --strict-markers"
+filterwarnings = ["error::pytest.PytestUnraisableExceptionWarning"]
+
+[tool.coverage.run]
+source = ["reviewgenie"]
+branch = true
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "SIM", "RUF", "PL", "C4", "PT", "RET", "TID"]
+ignore = ["PLC0415", "PLR0917", "PLR0913", "PLR2004", "PLR0911", "PLR0912", "PLR0915", "S603", "S607", "RUF001"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S105", "S106", "S108", "PLR2004", "PT011", "PT018", "RUF015", "E501"]
+"src/reviewgenie/rules/builtin.py" = ["E501", "S105"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unreachable = true
+files = ["src/reviewgenie"]
+
+[[tool.mypy.overrides]]
+module = ["mcp.*", "mcp_types.*"]
+follow_untyped_imports = true
+
+[tool.bandit]
+exclude_dirs = ["tests", ".venv"]
+skips = ["B404"]

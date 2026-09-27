@@ -1,8 +1,24 @@
-.venv/
+# Python
 __pycache__/
-.env
-
-# build artifacts
+*.py[cod]
 *.egg-info/
-dist/
+.venv/
+venv/
 build/
+dist/
+
+# Tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Local config & secrets
+.env
+.env.*
+!.env.example
+.cache/
+*.sarif
+reviewgenie-report.*

@@ -1,43 +1,72 @@
-name: reviewgenie-ci
+name: CI
+
 on:
+  push:
+    branches: [main]
   pull_request:
-    paths:
-      - "**/*.py"
-      - ".github/workflows/ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  tests:
+  lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
-          python-version: "3.11"
+          python-version: "3.13"
+      - run: python -m pip install -e . ruff mypy
+      - run: ruff check src tests
+      - run: ruff format --check src tests
+      - run: mypy
 
-      - name: Install deps
-        run: python -m pip install -r requirements.txt
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.11", "3.12", "3.13", "3.14"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install -e . pytest pytest-asyncio pytest-cov respx
+      - run: pytest --cov --cov-report=term-missing:skip-covered
 
-      - name: Run unit + smoke tests
-        run: pytest -q
-
-  reviewgenie:
-    needs: tests              # run only if tests pass
+  security:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
-          python-version: "3.11"
+          python-version: "3.13"
+      - run: python -m pip install . bandit pip-audit
+      - name: Bandit
+        run: bandit -q -r src -c pyproject.toml
+      - name: Dependency audit
+        run: pip-audit --skip-editable --progress-spinner off
 
-      - name: Install deps
-        run: python -m pip install -r requirements.txt
-
-      - name: Risk check
-        env:
-          RG_RISK_THRESHOLD: "0.6"        # <- change threshold here
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}   # if your tools still need it
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: python -m pip install build twine
+      - run: python -m build
+      - run: twine check --strict dist/*
+      - name: Smoke-test the wheel
         run: |
-          python -m codeview_mcp.cli check \
-            "https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }}"
+          python -m venv /tmp/smoke
+          /tmp/smoke/bin/pip install dist/*.whl
+          /tmp/smoke/bin/reviewgenie --version
+          /tmp/smoke/bin/reviewgenie rules > /dev/null

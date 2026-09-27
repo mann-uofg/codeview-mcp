@@ -1,0 +1,35 @@
+name: ReviewGenie
+
+# Dogfooding: ReviewGenie reviews every pull request to this repository using the action in this repo.
+# Add a free GEMINI_API_KEY repository secret for AI review; without it the review is static-rules only.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+  security-events: write
+
+concurrency:
+  group: reviewgenie-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - id: genie
+        uses: ./
+        with:
+          gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
+          groq-api-key: ${{ secrets.GROQ_API_KEY }}
+          fail-on: critical
+      - uses: github/codeql-action/upload-sarif@v4
+        if: always() && hashFiles('reviewgenie.sarif') != ''
+        with:
+          sarif_file: reviewgenie.sarif
+          category: reviewgenie

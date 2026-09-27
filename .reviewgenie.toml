@@ -1,0 +1,13 @@
+# ReviewGenie's own configuration (dogfooding).
+provider = "auto"
+fail_on = "high"
+min_severity = "low"
+
+# The rule catalogue necessarily contains the very patterns it detects.
+exclude = ["src/reviewgenie/rules/builtin.py"]
+
+focus = ["security", "bugs", "MCP protocol correctness"]
+instructions = """
+This is a security tool: treat any path where untrusted input (diffs, PR text, model output,
+URLs, git refs) reaches the network, a subprocess, the filesystem or a GitHub comment as high risk.
+"""

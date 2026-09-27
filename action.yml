@@ -1,0 +1,140 @@
+name: ReviewGenie AI Code Review
+description: Free AI code review for pull requests. Static security rules + free-tier AI, inline comments, risk score and SARIF.
+author: Mann Modi
+branding:
+  icon: eye
+  color: purple
+
+inputs:
+  github-token:
+    description: Token used to read the PR and post the review. Needs `pull-requests: write` to post.
+    default: ${{ github.token }}
+  pr-url:
+    description: Pull request to review. Defaults to the PR that triggered the workflow.
+    default: ""
+  gemini-api-key:
+    description: Google Gemini API key (free tier). Recommended.
+    default: ""
+  groq-api-key:
+    description: Groq API key (free tier).
+    default: ""
+  cerebras-api-key:
+    description: Cerebras API key (free tier).
+    default: ""
+  openrouter-api-key:
+    description: OpenRouter API key (free models).
+    default: ""
+  provider:
+    description: auto, gemini, groq, cerebras, openrouter, none (static rules only).
+    default: auto
+  model:
+    description: Override the provider's default model.
+    default: ""
+  post-review:
+    description: Post the review (summary + inline comments) to the pull request.
+    default: "true"
+  fail-on:
+    description: Fail the job when a finding is at/above this severity (critical, high, medium, low, info, never).
+    default: never
+  max-risk:
+    description: Fail the job when the risk score (0-100) is above this value. Empty = never.
+    default: ""
+  focus:
+    description: Comma-separated areas for the AI to emphasise, e.g. "security,performance".
+    default: ""
+  sarif-file:
+    description: Where to write the SARIF report (upload it with github/codeql-action/upload-sarif).
+    default: reviewgenie.sarif
+  python-version:
+    description: Python used to run ReviewGenie.
+    default: "3.13"
+
+outputs:
+  risk-score:
+    description: Risk score 0-100.
+    value: ${{ steps.review.outputs.risk-score }}
+  risk-level:
+    description: low, medium, high or critical.
+    value: ${{ steps.review.outputs.risk-level }}
+  verdict:
+    description: approve, comment or request_changes.
+    value: ${{ steps.review.outputs.verdict }}
+  findings:
+    description: Number of findings.
+    value: ${{ steps.review.outputs.findings }}
+  sarif-file:
+    description: Path of the SARIF report.
+    value: ${{ inputs.sarif-file }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v7
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install ReviewGenie
+      shell: bash
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+      run: python -m pip install --disable-pip-version-check --quiet "$ACTION_PATH"
+
+    - name: Review pull request
+      id: review
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        GEMINI_API_KEY: ${{ inputs.gemini-api-key }}
+        GROQ_API_KEY: ${{ inputs.groq-api-key }}
+        CEREBRAS_API_KEY: ${{ inputs.cerebras-api-key }}
+        OPENROUTER_API_KEY: ${{ inputs.openrouter-api-key }}
+        RG_PROVIDER: ${{ inputs.provider }}
+        RG_MODEL: ${{ inputs.model }}
+        INPUT_PR_URL: ${{ inputs.pr-url }}
+        EVENT_PR_URL: ${{ github.event.pull_request.html_url }}
+        INPUT_POST: ${{ inputs.post-review }}
+        INPUT_FAIL_ON: ${{ inputs.fail-on }}
+        INPUT_MAX_RISK: ${{ inputs.max-risk }}
+        INPUT_FOCUS: ${{ inputs.focus }}
+        INPUT_SARIF: ${{ inputs.sarif-file }}
+        RG_NO_GH_CLI: "1"
+      run: |
+        set -euo pipefail
+        pr="${INPUT_PR_URL:-$EVENT_PR_URL}"
+        if [ -z "$pr" ]; then
+          echo "::error::No pull request to review. Run on pull_request events or set pr-url."
+          exit 1
+        fi
+        [ -n "${RG_MODEL}" ] || unset RG_MODEL
+        args=(review "$pr" --format markdown --output "$RUNNER_TEMP/reviewgenie.md"
+              --json-output "$RUNNER_TEMP/reviewgenie.json" --sarif-output "$INPUT_SARIF"
+              --fail-on never)
+        if [ "$INPUT_POST" = "true" ]; then args+=(--post); fi
+        IFS=',' read -ra areas <<< "$INPUT_FOCUS"
+        for area in "${areas[@]}"; do
+          area="$(echo "$area" | xargs)"
+          [ -n "$area" ] && args+=(--focus "$area")
+        done
+        reviewgenie "${args[@]}"
+
+        python - "$RUNNER_TEMP/reviewgenie.json" >> "$GITHUB_OUTPUT" <<'PY'
+        import json, sys
+        r = json.load(open(sys.argv[1], encoding="utf-8"))
+        print(f"risk-score={r['risk']['score']}")
+        print(f"risk-level={r['risk']['level']}")
+        print(f"verdict={r['verdict']}")
+        print(f"findings={len(r['findings'])}")
+        PY
+
+        python - "$RUNNER_TEMP/reviewgenie.json" "$INPUT_FAIL_ON" "$INPUT_MAX_RISK" <<'PY'
+        import json, sys
+        order = ["info", "low", "medium", "high", "critical"]
+        report, fail_on, max_risk = json.load(open(sys.argv[1], encoding="utf-8")), sys.argv[2].strip().lower(), sys.argv[3].strip()
+        worst = max((order.index(f["severity"]) for f in report["findings"]), default=-1)
+        if fail_on in order and worst >= order.index(fail_on):
+            print(f"::error::ReviewGenie found issues at or above '{fail_on}'.")
+            sys.exit(1)
+        if max_risk and report["risk"]["score"] > int(max_risk):
+            print(f"::error::Risk score {report['risk']['score']} exceeds {max_risk}.")
+            sys.exit(1)
+        PY
