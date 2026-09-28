@@ -9,14 +9,14 @@ import httpx
 import pytest
 import respx
 
+from codeview.config import Config
+from codeview.diff import parse_diff
+from codeview.llm.client import ChatClient
+from codeview.models import Category, Finding, Severity
+from codeview.render import finding_key, github_review_payload, safe_text, to_markdown, to_sarif
+from codeview.reviewer import merge_findings, publish_review, review_diff, review_pull_request
+from codeview.sources.github import GitHubClient, PRRef
 from conftest import SAMPLE_DIFF, make_diff
-from reviewgenie.config import Config
-from reviewgenie.diff import parse_diff
-from reviewgenie.llm.client import ChatClient
-from reviewgenie.models import Category, Finding, Severity
-from reviewgenie.render import finding_key, github_review_payload, safe_text, to_markdown, to_sarif
-from reviewgenie.reviewer import merge_findings, publish_review, review_diff, review_pull_request
-from reviewgenie.sources.github import GitHubClient, PRRef
 
 API = "https://api.github.com"
 PR_JSON = {
@@ -44,7 +44,7 @@ async def test_static_only_review_of_sample_diff() -> None:
     outcome = await review_diff(SAMPLE_DIFF, target="t", config=Config())
     r = outcome.report
     ids = {f.rule_id for f in r.findings}
-    assert {"RG-SEC-025", "RG-BUG-004"} <= ids
+    assert {"CV-SEC-025", "CV-BUG-004"} <= ids
     assert r.verdict == "request_changes"
     assert r.ai is None
     assert "package-lock.json" in r.stats.files_skipped
@@ -130,7 +130,7 @@ def test_merge_keeps_distinct_findings() -> None:
 async def test_markdown_and_sarif_render() -> None:
     r = (await review_diff(SAMPLE_DIFF, target="t", config=Config())).report
     md = to_markdown(r)
-    assert "ReviewGenie review" in md
+    assert "codeview review" in md
     assert "`app/db.py:11`" in md
     assert "Risk breakdown" in md
     sarif = to_sarif(r)
@@ -138,14 +138,14 @@ async def test_markdown_and_sarif_render() -> None:
     run = sarif["runs"][0]
     rule_ids = {rule["id"] for rule in run["tool"]["driver"]["rules"]}
     assert {res["ruleId"] for res in run["results"]} <= rule_ids
-    res = next(x for x in run["results"] if x["ruleId"] == "RG-SEC-025")
+    res = next(x for x in run["results"] if x["ruleId"] == "CV-SEC-025")
     assert res["level"] == "error"
     assert res["locations"][0]["physicalLocation"]["region"]["startLine"] == 11
     json.dumps(sarif)  # serialisable
 
 
 def test_safe_text_neutralises_untrusted_markdown() -> None:
-    out = safe_text("hey @admin ![x](https://tracker.example/p.png) <!-- rg:forged --> fixes #1")
+    out = safe_text("hey @admin ![x](https://tracker.example/p.png) <!-- cv:forged --> fixes #1")
     assert "@admin" not in out
     assert "![" not in out
     assert "<!--" not in out
@@ -186,7 +186,7 @@ def _mock_pr(diff: str = SAMPLE_DIFF, base_config: str | None = None) -> None:
     respx.get(f"{API}/repos/octo/demo/pulls/7", headers={"Accept": "application/vnd.github.diff"}).mock(
         return_value=httpx.Response(200, text=diff)
     )
-    respx.get(f"{API}/repos/octo/demo/contents/.reviewgenie.toml").mock(
+    respx.get(f"{API}/repos/octo/demo/contents/.codeview.toml").mock(
         return_value=httpx.Response(200, text=base_config) if base_config else httpx.Response(404, json={})
     )
     respx.get(f"{API}/repos/octo/demo/contents/pyproject.toml").mock(return_value=httpx.Response(404, json={}))
@@ -195,12 +195,12 @@ def _mock_pr(diff: str = SAMPLE_DIFF, base_config: str | None = None) -> None:
 @respx.mock
 async def test_pr_review_uses_base_branch_config_not_the_pr() -> None:
     # The PR itself tries to disable the rule that would catch it; the base config does not.
-    evil_pr = SAMPLE_DIFF + make_diff(".reviewgenie.toml", ['disable_rules = ["RG-SEC-025"]'], new_file=True)
+    evil_pr = SAMPLE_DIFF + make_diff(".codeview.toml", ['disable_rules = ["CV-SEC-025"]'], new_file=True)
     _mock_pr(evil_pr, base_config='min_severity = "low"\n')
     outcome = await review_pull_request(PRRef("octo", "demo", 7), client=GitHubClient(token="t"), use_ai=False)
-    assert "RG-SEC-025" in {f.rule_id for f in outcome.report.findings}
+    assert "CV-SEC-025" in {f.rule_id for f in outcome.report.findings}
     assert outcome.pull is not None and outcome.pull.head_sha == "h" * 40
-    content_call = next(c for c in respx.calls if "contents/.reviewgenie.toml" in str(c.request.url))
+    content_call = next(c for c in respx.calls if "contents/.codeview.toml" in str(c.request.url))
     assert content_call.request.url.params["ref"] == "b" * 40
 
 

@@ -1,236 +1,200 @@
-<div align="center">
+# codeview
 
-# 🧞 ReviewGenie
-
-**AI code review for pull requests and local changes. An MCP server, a CLI and a GitHub Action, running entirely on free models.**
-
-[![PyPI](https://img.shields.io/pypi/v/reviewgenie?color=7c3aed)](https://pypi.org/project/reviewgenie/)
-[![Python](https://img.shields.io/pypi/pyversions/reviewgenie)](https://pypi.org/project/reviewgenie/)
 [![CI](https://github.com/mann-uofg/codeview-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/mann-uofg/codeview-mcp/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![MCP](https://img.shields.io/badge/MCP-2026--07--28-blue)](https://modelcontextprotocol.io)
 
-</div>
+codeview reviews code changes: GitHub pull requests, your local uncommitted work, or any diff.
+It runs as an MCP server (so an editor assistant can call it), as a command-line tool, and as a GitHub Action.
 
-```text
-$ uvx reviewgenie review https://github.com/acme/api/pull/42
+Each review has two parts:
 
-🧞 ReviewGenie · https://github.com/acme/api/pull/42
-⛔ Changes requested · Risk 🟠 58/100 (high) · 6 files · +212/-40
+1. A set of about 50 regex rules that run on the added lines. They catch things like committed secrets,
+   SQL built with string formatting, `eval`, `shell=True`, disabled TLS verification, and risky GitHub Actions workflows.
+2. An optional AI pass that looks for logic bugs, edge cases and missing tests. It only uses providers with a
+   free tier (Gemini, Groq, Cerebras, OpenRouter) or a local model through Ollama, so it costs nothing to run.
 
-Adds a user search endpoint. The query is assembled with an f-string, which allows SQL injection,
-and the new handler swallows database errors. Tests cover the happy path only.
+The output is a list of findings tied to file and line, a verdict, and a 0-100 risk score with the reasons behind it.
 
- 🔴  SQL built from strings            api/users.py:88        RG-SEC-025
- 🔴  Unvalidated sort column           api/users.py:91        AI
- 🟠  Error silently swallowed          api/users.py:104       AI
- 🟡  No test for empty search term     tests/test_users.py    AI
-```
+## Install
 
-## Why ReviewGenie
-
-- **Zero cost.** Uses free API tiers (Gemini, Groq, Cerebras, OpenRouter) or a local Ollama model. No keys at all? You still get 45+ deterministic security and bug rules.
-- **Built for MCP.** Your assistant can review a PR, review your uncommitted work before you push, pull a line-numbered diff for its own reasoning, and publish the review, all with structured outputs.
-- **Two brains.** Fast regex rules catch secrets, injection, unsafe deserialization, TLS bypasses and CI/CD supply-chain issues deterministically. The AI pass catches logic bugs, edge cases and missing tests. Results are merged and de-duplicated.
-- **Explainable risk.** A 0-100 score built from visible factors: size, sensitive areas (auth, payments, migrations, CI), findings, missing tests, plus the AI's assessment.
-- **Everywhere you work.** MCP (stdio or HTTP), a terminal CLI, a GitHub Action with inline review comments, SARIF for GitHub code scanning, Markdown, and JSON.
-- **Secure by design.** Hardened against prompt injection, hostile repositories and SSRF (see [Security model](#security-model)).
-
-## Quick start
+Requires Python 3.11+.
 
 ```bash
-# No install needed (uv), or: pipx install reviewgenie / pip install reviewgenie
-uvx reviewgenie review https://github.com/psf/requests/pull/6883   # public PR, no token needed
-uvx reviewgenie review                                             # your uncommitted changes
-uvx reviewgenie review --staged                                    # just what's staged
-uvx reviewgenie review --branch                                    # this branch vs main
+pip install git+https://github.com/mann-uofg/codeview-mcp
 ```
 
-Turn on the AI pass with a **free** key. Any one of these works, and if several are set they're tried in order as fallbacks:
+Or run it without installing, using [uv](https://docs.astral.sh/uv/):
 
-| Provider | Free key | Environment variable |
+```bash
+uvx --from git+https://github.com/mann-uofg/codeview-mcp codeview review
+```
+
+## Usage
+
+```bash
+codeview review https://github.com/psf/requests/pull/6883   # a pull request
+codeview review owner/repo#123                              # short form
+codeview review                                             # uncommitted changes in the current repo
+codeview review --staged                                    # only staged changes
+codeview review --branch --base main                        # current branch vs main
+git diff HEAD~3 | codeview review --diff -                  # any diff
+```
+
+Public repositories work without a token. For private repositories, or to post reviews, set `GITHUB_TOKEN`.
+If you're logged in with the `gh` CLI, its token is picked up automatically.
+
+Other useful options:
+
+```
+-f, --format text|markdown|json|sarif
+-o, --output FILE
+--json-output FILE / --sarif-output FILE   write extra reports in the same run
+--post [--dry-run]                         publish the review to the PR as inline comments
+--fail-on high                             exit 1 if any finding is high or worse (default: high)
+--max-risk 60                              exit 1 if the risk score is above 60
+--no-ai                                    rules only
+--provider gemini --model ...              pick the AI provider/model
+--focus security                           ask the AI to concentrate on something
+```
+
+`codeview rules` lists every rule, `codeview providers` shows which AI providers are configured,
+and `codeview init` writes a starter config file.
+
+## AI providers
+
+Set any one of these. If more than one is set, they are tried in this order, falling back when one fails
+or hits its rate limit.
+
+| Provider | Environment variable | Get a key |
 |---|---|---|
-| Google Gemini (recommended) | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) | `GEMINI_API_KEY` |
-| Groq | [console.groq.com/keys](https://console.groq.com/keys) | `GROQ_API_KEY` |
-| Cerebras | [cloud.cerebras.ai](https://cloud.cerebras.ai) | `CEREBRAS_API_KEY` |
-| OpenRouter (free models) | [openrouter.ai/keys](https://openrouter.ai/keys) | `OPENROUTER_API_KEY` |
-| Ollama (local, offline) | [ollama.com](https://ollama.com/download) | `RG_OLLAMA=1` (or `OLLAMA_HOST`) |
-| Any OpenAI-compatible server | – | `RG_BASE_URL`, `RG_MODEL`, `RG_API_KEY` |
+| Google Gemini | `GEMINI_API_KEY` | https://aistudio.google.com/apikey |
+| Groq | `GROQ_API_KEY` | https://console.groq.com/keys |
+| Cerebras | `CEREBRAS_API_KEY` | https://cloud.cerebras.ai |
+| OpenRouter (free models) | `OPENROUTER_API_KEY` | https://openrouter.ai/keys |
+| Ollama (local) | `CODEVIEW_OLLAMA=1` or `OLLAMA_HOST` | https://ollama.com |
+| Any OpenAI-compatible API | `CODEVIEW_BASE_URL`, `CODEVIEW_MODEL`, `CODEVIEW_API_KEY` | |
 
-```bash
-export GEMINI_API_KEY=...        # PowerShell: $env:GEMINI_API_KEY="..."
-reviewgenie providers            # shows what's configured and the model each provider will use
-```
+Every provider has a default model that fits its free tier. `codeview providers` shows which one it is, and
+`--model` or `CODEVIEW_MODEL` overrides it. The diff is trimmed to fit each provider's limits, and responses are
+cached locally, so reviewing the same diff twice doesn't use your quota again.
 
-Each provider ships with a sensible free-tier default model. Override it with `--model`, `RG_MODEL` or `model =` in the config. Private repositories and posting reviews need `GITHUB_TOKEN` (or just `gh auth login`, which ReviewGenie picks up automatically).
+With no provider configured, the rules still run.
 
-## Use it from your AI assistant (MCP)
+## MCP server
 
-Add ReviewGenie to any MCP-compatible client (VS Code, Cursor, Windsurf, Zed, and others):
+Add this to your MCP client's config (Cursor, Windsurf, Zed, and others use this format):
 
 ```json
 {
   "mcpServers": {
-    "reviewgenie": {
+    "codeview": {
       "command": "uvx",
-      "args": ["reviewgenie", "serve"],
-      "env": { "GEMINI_API_KEY": "your-free-key", "GITHUB_TOKEN": "optional" }
+      "args": ["--from", "git+https://github.com/mann-uofg/codeview-mcp", "codeview", "serve"],
+      "env": { "GEMINI_API_KEY": "...", "GITHUB_TOKEN": "..." }
     }
   }
 }
 ```
 
-<details><summary>VS Code (<code>.vscode/mcp.json</code>)</summary>
+For VS Code, put the same thing in `.vscode/mcp.json` under `"servers"` with `"type": "stdio"`.
+`codeview serve --http` starts a Streamable HTTP server on `127.0.0.1:8765/mcp` instead.
 
-```json
-{
-  "servers": {
-    "reviewgenie": { "type": "stdio", "command": "uvx", "args": ["reviewgenie", "serve"] }
-  }
-}
-```
-</details>
+Tools:
 
-<details><summary>Remote / HTTP transport</summary>
+- `review_pull_request`: review a PR
+- `review_local_changes`: review working tree, staged, or branch changes
+- `review_diff_text`: review a diff passed as text
+- `get_pull_request_diff`: PR metadata plus a line-numbered diff, for the assistant to read itself
+- `post_review`: post the review to GitHub. This is a dry run unless `dry_run=false` is passed, and comments
+  that were already posted are skipped.
+- `list_rules`, `provider_status`
 
-```bash
-reviewgenie serve --http --port 8765     # Streamable HTTP at http://127.0.0.1:8765/mcp
-```
-It binds to localhost with DNS-rebinding protection. If you expose it beyond localhost, put it behind an authenticating proxy.
-</details>
+It also provides prompts (`deep_review`, `security_audit`, `suggest_tests`, `review_my_changes`) and resources
+(`codeview://rules`, `codeview://providers`, `codeview://config/example`).
 
-Then just ask: *"Review PR acme/api#42"*, *"Review my changes before I commit"*, *"Do a security audit of this PR"*.
-
-| Tool | What it does |
-|---|---|
-| `review_pull_request` | Full review of a GitHub PR: findings, 0-100 risk, verdict. Read-only. |
-| `review_local_changes` | Review working-tree, staged or branch changes in a local repo. |
-| `review_diff_text` | Review any unified diff. |
-| `get_pull_request_diff` | PR metadata + line-numbered diff, so the assistant can do its own deep review. |
-| `post_review` | Publish one GitHub review with inline comments. **Dry run by default**; re-runs never duplicate comments. |
-| `list_rules` / `provider_status` | Inspect the static rules and which free providers are configured. |
-
-**Prompts:** `deep_review`, `security_audit`, `suggest_tests`, `review_my_changes`. **Resources:** `reviewgenie://rules`, `reviewgenie://providers`, `reviewgenie://config/example`.
-
-## GitHub Action: free AI reviews on every PR
+## GitHub Action
 
 ```yaml
-# .github/workflows/review.yml
-name: ReviewGenie
-on:
-  pull_request:
+name: codeview
+on: pull_request
+
 permissions:
   contents: read
-  pull-requests: write      # post the review
-  security-events: write    # optional: SARIF → code scanning
+  pull-requests: write     # to post the review
+  security-events: write   # only needed for the SARIF upload
+
 jobs:
   review:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: mann-uofg/codeview-mcp@v2
-        id: genie
         with:
-          gemini-api-key: ${{ secrets.GEMINI_API_KEY }}   # optional; static rules run without it
-          fail-on: critical                               # or high / medium / never
+          gemini-api-key: ${{ secrets.GEMINI_API_KEY }}   # optional
+          fail-on: critical
       - uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
-          sarif_file: reviewgenie.sarif
+          sarif_file: codeview.sarif
 ```
 
-You get a summary review with a risk breakdown, inline comments on the exact lines, a job summary, SARIF alerts in the Security tab, and outputs (`risk-score`, `risk-level`, `verdict`, `findings`) for later steps. Configuration is always read from the PR's **base** branch, so a pull request can't switch off its own review.
-
-## CLI reference
-
-```bash
-reviewgenie review [PR_URL | OWNER/REPO#N]      # omit the target to review local changes
-  --staged | --branch [--base main] | --diff FILE|-  # choose what to review
-  -f text|markdown|json|sarif  -o FILE          # output format and file
-  --json-output FILE --sarif-output FILE        # extra report files in the same run
-  --post [--dry-run]                            # publish to the PR (inline comments)
-  --fail-on high   --max-risk 60                # CI gates (exit code 1)
-  --provider gemini --model ... --focus security --no-ai --no-cache
-reviewgenie serve [--http]                      # MCP server
-reviewgenie providers | rules | init | mcp-config | clear-cache
-```
+The action posts one review with a summary and inline comments, writes a job summary, and sets the outputs
+`risk-score`, `risk-level`, `verdict` and `findings`. Pull requests from forks get a read-only token, so the
+review isn't posted there, but the job summary and SARIF still work. All inputs are listed in [action.yml](action.yml).
 
 ## Configuration
 
-`reviewgenie init` writes a commented `.reviewgenie.toml`. Settings can also live under `[tool.reviewgenie]` in `pyproject.toml`.
+Put a `.codeview.toml` in the repository root, or a `[tool.codeview]` table in `pyproject.toml`:
 
 ```toml
-provider = "auto"            # auto | gemini | groq | cerebras | openrouter | ollama | openai-compatible | none
-min_severity = "low"         # drop findings below this level
-fail_on = "high"             # CLI exit code 1 at/above this severity ("never" to disable)
+provider = "auto"
+min_severity = "low"          # hide findings below this
+fail_on = "high"              # or "never"
 max_findings = 30
 exclude = ["docs/**", "**/*.generated.ts"]
-disable_rules = ["RG-QUAL-006"]
-focus = ["security", "performance"]
-instructions = "We use SQLAlchemy 2.x; flag raw SQL built with string formatting."
+disable_rules = ["CV-QUAL-006"]
+focus = ["security"]
+instructions = "We use SQLAlchemy 2.x. Flag raw SQL built with string formatting."
 
 [[custom_rules]]
 id = "TEAM-001"
 pattern = "print\\("
-message = "Use the structured logger instead of print()."
+message = "Use the logger instead of print()."
 severity = "low"
 paths = ["src/**/*.py"]
 ```
 
-Silence a single line with a trailing `reviewgenie-ignore` or `rg-ignore[RG-SEC-020]` comment.
+To silence one line, add a `codeview-ignore` comment to it, or `cv-ignore[CV-SEC-020]` for a specific rule.
 
-## What it checks
+When reviewing a pull request, the config is read from the base branch rather than the PR. That way a PR
+can't turn off the checks that would catch it.
 
-`reviewgenie rules` lists every rule. Highlights:
+## Security notes
 
-- **Secrets:** AWS, GitHub, Slack, Stripe, Google and AI-provider keys; private keys; JWTs; hard-coded passwords; credentials in URLs. Values are always redacted in output.
-- **Injection:** SQL built from strings, `eval`/`exec`, `shell=True`, command execution, XSS sinks, disabled auto-escaping, path traversal, SSRF.
-- **Crypto & transport:** disabled TLS verification, MD5/SHA-1, insecure randomness for tokens.
-- **Supply chain:** `pull_request_target`, script injection via `${{ github.event.* }}`, actions pinned to branches, `write-all` permissions, unpinned base images, `curl | sh`.
-- **Bugs & leftovers:** bare/empty `except`/`catch`, mutable defaults, `== None`, debugger statements, `.only` tests, `any`/`@ts-ignore`, unchecked `.unwrap()`, ignored Go errors.
+codeview reads input that other people control, so:
 
-## How it works
+- The diff and PR text are passed to the model as data, with instructions not to follow anything written in them.
+  The model's answer is validated, and findings that point at files or lines not in the diff are dropped.
+- Text posted to GitHub has `@mentions`, issue-closing keywords, images and HTML comments neutralized.
+- Local git commands run with external diff drivers, textconv, fsmonitor and pagers turned off. Refs are validated,
+  and symlinks aren't followed.
+- Only PR URLs on your GitHub host are accepted. API keys are never sent over plain HTTP to non-local hosts.
+- The HTTP transport only listens on localhost and checks Host/Origin headers.
 
-```mermaid
-flowchart LR
-    A[PR URL / local git / diff] --> B[Diff parser<br/>line-accurate]
-    B --> C{Filters<br/>lockfiles, generated,<br/>exclude globs}
-    C --> D[Static rules<br/>45+ checks]
-    C --> E[AI review<br/>free provider + fallback + cache]
-    D --> F[Merge & de-duplicate]
-    E --> F
-    F --> G[Risk score<br/>explainable factors]
-    G --> H[Text · Markdown · JSON · SARIF]
-    G --> I[GitHub review<br/>inline comments]
-    G --> J[MCP structured output]
-```
-
-AI responses are cached locally (keyed by diff, prompt and model) so re-reviewing the same change costs nothing. Diffs are trimmed to each provider's free-tier budget, smallest source files first.
-
-## Security model
-
-ReviewGenie processes untrusted input: diffs and PR text written by anyone, and output from language models. So:
-
-- **Prompt injection:** diff, title and description are fenced as data, and the model is told never to follow instructions inside them. Model output is schema-validated, and findings must point at files and lines that exist in the diff; anything else is dropped or unanchored.
-- **Safe publishing:** generated text has `@mentions`, `closes #N` keywords, remote images and hidden HTML markers neutralised before it's posted to GitHub.
-- **Hostile repositories:** local git runs with external diff drivers, textconv filters, fsmonitor hooks and pagers disabled; refs are validated (no option injection); untracked symlinks are never followed.
-- **SSRF / token safety:** only PR URLs on the configured GitHub host are accepted, the token is never sent elsewhere, and API keys are never sent over plain HTTP to non-local hosts.
-- **Config integrity:** PR reviews read configuration from the base branch, not from the PR.
-- **Least privilege:** MCP tools carry read-only/destructive hints; `post_review` defaults to a dry run; the HTTP transport binds to localhost with DNS-rebinding protection.
-
-Found a vulnerability? See [SECURITY.md](SECURITY.md).
+To report a vulnerability, see [SECURITY.md](SECURITY.md).
 
 ## Development
 
 ```bash
-git clone https://github.com/mann-uofg/codeview-mcp && cd codeview-mcp
-uv sync                 # or: python -m venv .venv && pip install -e . --group dev
-uv run pytest           # 190+ tests, network fully mocked
+git clone https://github.com/mann-uofg/codeview-mcp
+cd codeview-mcp
+uv sync
+uv run pytest
 uv run ruff check . && uv run mypy
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) and the [changelog](CHANGELOG.md). Upgrading from 1.x (`reviewgenie-mcp`)? The package is now `reviewgenie`; see the changelog for the migration notes.
+See [CONTRIBUTING.md](CONTRIBUTING.md). Changes are listed in [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
-MIT © Mann Modi
+MIT

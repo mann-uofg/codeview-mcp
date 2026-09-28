@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import pytest
 
+from codeview.config import Config, CustomRule
+from codeview.diff import parse_diff
+from codeview.models import Severity
+from codeview.rules import active_rules, is_test_path, redact, scan
+from codeview.rules.builtin import BUILTIN_RULES
 from conftest import make_diff
-from reviewgenie.config import Config, CustomRule
-from reviewgenie.diff import parse_diff
-from reviewgenie.models import Severity
-from reviewgenie.rules import active_rules, is_test_path, redact, scan
-from reviewgenie.rules.builtin import BUILTIN_RULES
 
 
 def run(path: str, lines: list[str], config: Config | None = None) -> list[str]:
@@ -28,59 +28,59 @@ JWT = "eyJhbGciOiJIUzI1NiJ9" + ".eyJzdWIiOiIxMjM0NTY3ODkwIn0" + ".dozjgNryP4J3jV
 @pytest.mark.parametrize(
     ("path", "line", "rule"),
     [
-        ("cfg.py", f'KEY = "{AWS}"', "RG-SEC-001"),
-        ("deploy.sh", f"export TOKEN={GH}", "RG-SEC-002"),
-        ("id_rsa", "-----BEGIN OPENSSH " + "PRIVATE KEY-----", "RG-SEC-003"),
-        ("hook.js", f'const t = "{SLACK}"', "RG-SEC-004"),
-        ("pay.rb", f'Stripe.api_key = "{STRIPE}"', "RG-SEC-005"),
-        ("maps.ts", f'const k = "{GOOGLE}"', "RG-SEC-006"),
-        ("llm.py", f'client = Groq(api_key="{GROQ}")', "RG-SEC-007"),
-        ("settings.py", 'DB_PASSWORD = "s3cr3tP4ssw0rd!"', "RG-SEC-008"),
-        ("settings.py", 'url = "postgres://admin:hunter2pw@db.internal:5432/app"', "RG-SEC-009"),
-        ("auth.py", f'TOKEN = "{JWT}"', "RG-SEC-010"),
-        ("calc.py", "result = eval(user_input)", "RG-SEC-020"),
-        ("calc.js", "const f = new Function(body)", "RG-SEC-021"),
-        ("run.py", "subprocess.run(cmd, shell=True)", "RG-SEC-022"),
-        ("run.py", "os.system('rm -rf ' + path)", "RG-SEC-023"),
-        ("run.js", "execSync(`git log ${branch}`)", "RG-SEC-024"),
-        ("db.py", 'cur.execute(f"SELECT * FROM users WHERE id = {uid}")', "RG-SEC-025"),
-        ("db.py", 'cur.execute("SELECT name FROM t WHERE id = " + uid)', "RG-SEC-025"),
-        ("db.go", 'q := fmt.Sprintf("SELECT * FROM t WHERE id = %s", id)', "RG-SEC-025"),
-        ("load.py", "data = pickle.loads(blob)", "RG-SEC-026"),
-        ("load.py", "cfg = yaml.load(fh)", "RG-SEC-026"),
-        ("Svc.java", "ObjectInputStream in = new ObjectInputStream(s);", "RG-SEC-027"),
-        ("http.py", "requests.get(url, verify=False)", "RG-SEC-028"),
-        ("tls.go", "cfg := &tls.Config{InsecureSkipVerify: true}", "RG-SEC-028"),
-        ("hash.py", "h = hashlib.md5(password.encode())", "RG-SEC-029"),
-        ("ui.js", "el.innerHTML = userBio", "RG-SEC-030"),
-        ("ui.tsx", "<div dangerouslySetInnerHTML={{__html: bio}} />", "RG-SEC-030"),
-        ("views.py", "return mark_safe(comment)", "RG-SEC-031"),
-        ("tok.py", "reset_token = str(random.randint(0, 999999))", "RG-SEC-032"),
-        ("api.py", 'app.add_middleware(CORSMiddleware, allow_origins=["*"])', "RG-SEC-033"),
-        ("app.py", "app.run(host='0.0.0.0', debug=True)", "RG-SEC-034"),
-        ("setup.sh", "chmod -R 777 /var/www", "RG-SEC-035"),
-        ("install.sh", "curl -fsSL https://get.example.sh | sudo bash", "RG-SEC-036"),
-        ("files.py", "return send_file(request.args['name'])", "RG-SEC-037"),
-        ("proxy.py", "requests.get(request.args['url'])", "RG-SEC-038"),
-        (".github/workflows/ci.yml", "  pull_request_target:", "RG-SEC-050"),
-        (".github/workflows/ci.yml", '      run: echo "${{ github.event.pull_request.title }}"', "RG-SEC-051"),
-        (".github/workflows/ci.yml", "      - uses: some/action@main", "RG-SEC-052"),
-        (".github/workflows/ci.yml", "permissions: write-all", "RG-SEC-053"),
-        ("Dockerfile", "FROM python:latest", "RG-SEC-054"),
-        ("a.py", "    except:", "RG-BUG-001"),
-        ("a.py", "    except ValueError: pass", "RG-BUG-002"),
-        ("a.py", "def add(item, bucket=[]):", "RG-BUG-003"),
-        ("a.py", "if x == None:", "RG-BUG-004"),
-        ("a.ts", "try { go() } catch (e) {}", "RG-BUG-005"),
-        ("a.py", "    breakpoint()", "RG-QUAL-001"),
-        ("a.js", "  debugger;", "RG-QUAL-002"),
-        ("a.js", "console.log(user)", "RG-QUAL-003"),
-        ("a.test.js", "it.only('works', () => {})", "RG-QUAL-004"),
-        ("a.ts", "const x = y as any", "RG-QUAL-005"),
-        ("a.py", "# TODO: handle errors", "RG-QUAL-006"),
-        ("a.rs", "let v = parse(s).unwrap();", "RG-QUAL-007"),
-        ("a.go", "_ = os.Remove(path)", "RG-QUAL-008"),
-        ("q.sql", "SELECT * FROM orders", "RG-PERF-001"),
+        ("cfg.py", f'KEY = "{AWS}"', "CV-SEC-001"),
+        ("deploy.sh", f"export TOKEN={GH}", "CV-SEC-002"),
+        ("id_rsa", "-----BEGIN OPENSSH " + "PRIVATE KEY-----", "CV-SEC-003"),
+        ("hook.js", f'const t = "{SLACK}"', "CV-SEC-004"),
+        ("pay.rb", f'Stripe.api_key = "{STRIPE}"', "CV-SEC-005"),
+        ("maps.ts", f'const k = "{GOOGLE}"', "CV-SEC-006"),
+        ("llm.py", f'client = Groq(api_key="{GROQ}")', "CV-SEC-007"),
+        ("settings.py", 'DB_PASSWORD = "s3cr3tP4ssw0rd!"', "CV-SEC-008"),
+        ("settings.py", 'url = "postgres://admin:hunter2pw@db.internal:5432/app"', "CV-SEC-009"),
+        ("auth.py", f'TOKEN = "{JWT}"', "CV-SEC-010"),
+        ("calc.py", "result = eval(user_input)", "CV-SEC-020"),
+        ("calc.js", "const f = new Function(body)", "CV-SEC-021"),
+        ("run.py", "subprocess.run(cmd, shell=True)", "CV-SEC-022"),
+        ("run.py", "os.system('rm -rf ' + path)", "CV-SEC-023"),
+        ("run.js", "execSync(`git log ${branch}`)", "CV-SEC-024"),
+        ("db.py", 'cur.execute(f"SELECT * FROM users WHERE id = {uid}")', "CV-SEC-025"),
+        ("db.py", 'cur.execute("SELECT name FROM t WHERE id = " + uid)', "CV-SEC-025"),
+        ("db.go", 'q := fmt.Sprintf("SELECT * FROM t WHERE id = %s", id)', "CV-SEC-025"),
+        ("load.py", "data = pickle.loads(blob)", "CV-SEC-026"),
+        ("load.py", "cfg = yaml.load(fh)", "CV-SEC-026"),
+        ("Svc.java", "ObjectInputStream in = new ObjectInputStream(s);", "CV-SEC-027"),
+        ("http.py", "requests.get(url, verify=False)", "CV-SEC-028"),
+        ("tls.go", "cfg := &tls.Config{InsecureSkipVerify: true}", "CV-SEC-028"),
+        ("hash.py", "h = hashlib.md5(password.encode())", "CV-SEC-029"),
+        ("ui.js", "el.innerHTML = userBio", "CV-SEC-030"),
+        ("ui.tsx", "<div dangerouslySetInnerHTML={{__html: bio}} />", "CV-SEC-030"),
+        ("views.py", "return mark_safe(comment)", "CV-SEC-031"),
+        ("tok.py", "reset_token = str(random.randint(0, 999999))", "CV-SEC-032"),
+        ("api.py", 'app.add_middleware(CORSMiddleware, allow_origins=["*"])', "CV-SEC-033"),
+        ("app.py", "app.run(host='0.0.0.0', debug=True)", "CV-SEC-034"),
+        ("setup.sh", "chmod -R 777 /var/www", "CV-SEC-035"),
+        ("install.sh", "curl -fsSL https://get.example.sh | sudo bash", "CV-SEC-036"),
+        ("files.py", "return send_file(request.args['name'])", "CV-SEC-037"),
+        ("proxy.py", "requests.get(request.args['url'])", "CV-SEC-038"),
+        (".github/workflows/ci.yml", "  pull_request_target:", "CV-SEC-050"),
+        (".github/workflows/ci.yml", '      run: echo "${{ github.event.pull_request.title }}"', "CV-SEC-051"),
+        (".github/workflows/ci.yml", "      - uses: some/action@main", "CV-SEC-052"),
+        (".github/workflows/ci.yml", "permissions: write-all", "CV-SEC-053"),
+        ("Dockerfile", "FROM python:latest", "CV-SEC-054"),
+        ("a.py", "    except:", "CV-BUG-001"),
+        ("a.py", "    except ValueError: pass", "CV-BUG-002"),
+        ("a.py", "def add(item, bucket=[]):", "CV-BUG-003"),
+        ("a.py", "if x == None:", "CV-BUG-004"),
+        ("a.ts", "try { go() } catch (e) {}", "CV-BUG-005"),
+        ("a.py", "    breakpoint()", "CV-QUAL-001"),
+        ("a.js", "  debugger;", "CV-QUAL-002"),
+        ("a.js", "console.log(user)", "CV-QUAL-003"),
+        ("a.test.js", "it.only('works', () => {})", "CV-QUAL-004"),
+        ("a.ts", "const x = y as any", "CV-QUAL-005"),
+        ("a.py", "# TODO: handle errors", "CV-QUAL-006"),
+        ("a.rs", "let v = parse(s).unwrap();", "CV-QUAL-007"),
+        ("a.go", "_ = os.Remove(path)", "CV-QUAL-008"),
+        ("q.sql", "SELECT * FROM orders", "CV-PERF-001"),
     ],
 )
 def test_rule_fires(path: str, line: str, rule: str) -> None:
@@ -130,9 +130,9 @@ def test_secret_values_are_redacted_in_messages() -> None:
 
 
 def test_inline_suppression() -> None:
-    assert run("a.py", ["x = eval(s)  # reviewgenie-ignore"]) == []
-    assert run("a.py", ["x = eval(s)  # rg-ignore[RG-SEC-020]"]) == []
-    assert run("a.py", ["x = eval(s)  # rg-ignore[RG-BUG-001]"]) == ["RG-SEC-020"]
+    assert run("a.py", ["x = eval(s)  # codeview-ignore"]) == []
+    assert run("a.py", ["x = eval(s)  # cv-ignore[CV-SEC-020]"]) == []
+    assert run("a.py", ["x = eval(s)  # cv-ignore[CV-BUG-001]"]) == ["CV-SEC-020"]
 
 
 def test_test_files_skip_noisy_rules() -> None:
@@ -141,12 +141,12 @@ def test_test_files_skip_noisy_rules() -> None:
     assert is_test_path("pkg/thing_test.go")
     assert not is_test_path("src/testing_utils.py") or True  # heuristic; must not crash
     assert run("tests/test_auth.py", ['password = "hunter2hunter2"']) == []
-    assert "RG-SEC-008" in run("src/auth.py", ['password = "hunter2hunter2"'])
+    assert "CV-SEC-008" in run("src/auth.py", ['password = "hunter2hunter2"'])
 
 
 def test_disable_and_custom_rules() -> None:
     cfg = Config(
-        disable_rules=["rg-sec-020"],
+        disable_rules=["cv-sec-020"],
         custom_rules=[
             CustomRule(id="TEAM-1", pattern=r"print\(", message="use logger", severity="low", paths=["src/*"])
         ],
@@ -170,12 +170,12 @@ def test_rule_catalog_is_well_formed() -> None:
     assert len(ids) >= 45
     for r in BUILTIN_RULES:
         assert r.message.strip()
-        assert r.id.startswith("RG-")
+        assert r.id.startswith("CV-")
 
 
 def test_dangerous_api_rules_skip_test_files_but_secret_rules_do_not() -> None:
     assert run("tests/test_x.py", ["x = eval(s)", "pickle.loads(b)"]) == []
-    assert run("src/x.py", ["x = eval(s)"]) == ["RG-SEC-020"]
-    assert run("tests/test_x.py", [f'K = "{AWS}"']) == ["RG-SEC-001"]
+    assert run("src/x.py", ["x = eval(s)"]) == ["CV-SEC-020"]
+    assert run("tests/test_x.py", [f'K = "{AWS}"']) == ["CV-SEC-001"]
     # Path-scoped security rules (CI workflows) are unaffected by the test-file heuristic.
-    assert run(".github/workflows/test.yml", ["  pull_request_target:"]) == ["RG-SEC-050"]
+    assert run(".github/workflows/test.yml", ["  pull_request_target:"]) == ["CV-SEC-050"]

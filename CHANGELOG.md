@@ -1,45 +1,31 @@
 # Changelog
 
-All notable changes to this project are documented here. The format follows
-[Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
+## 2.0.0 (2026-09-28)
 
-## [2.0.0] - 2026-09-27
+Rewrite from scratch.
 
-A ground-up rewrite. The package is now published on PyPI as **`reviewgenie`**.
+- MCP server rebuilt on version 2 of the official MCP Python SDK. Tools return structured results, and there are
+  prompts and resources. It runs over stdio or Streamable HTTP (localhost only).
+- New tools: review a PR, review local changes (working tree, staged or branch), review a raw diff, fetch a
+  line-numbered PR diff, and post a review to GitHub. Posting is a dry run by default, and re-runs don't duplicate comments.
+- The AI pass works with free-tier providers (Gemini, Groq, Cerebras, OpenRouter) or a local Ollama model, falls back
+  between them, and caches responses.
+- 48 regex rules for secrets, injection, unsafe deserialization, TLS and crypto misuse, XSS, SSRF, GitHub Actions
+  workflow issues and common bugs.
+- A risk score from 0 to 100 that lists the factors behind it.
+- Text, Markdown, JSON and SARIF output.
+- GitHub Action in the repo root.
+- `.codeview.toml` configuration. For PR reviews it is read from the base branch.
+- Hardening against prompt injection, malicious git config in reviewed repos, and token leakage.
+- Removed: ChromaDB embeddings, keyring, OpenTelemetry tracing, the stub test generator and the benchmark script.
 
-### Added
-- MCP server on the official MCP Python SDK 2.x with structured outputs, tool annotations, prompts and
-  resources; stdio and Streamable HTTP (localhost-only, DNS-rebinding protection) transports.
-- Tools: `review_pull_request`, `review_local_changes`, `review_diff_text`, `get_pull_request_diff`,
-  `post_review` (dry run by default, de-duplicated re-runs), `list_rules`, `provider_status`.
-- Free AI providers with automatic fallback: Gemini, Groq, Cerebras, OpenRouter free models, local Ollama,
-  or any OpenAI-compatible endpoint. Budgets sized to each free tier; responses cached locally.
-- 45+ static rules: secrets (redacted), injection, unsafe deserialization, TLS/crypto misuse, XSS,
-  SSRF, path traversal, GitHub Actions supply-chain issues, common bugs and leftovers; inline suppressions.
-- Explainable 0-100 risk score with visible factors.
-- Local reviews: working tree (including untracked files), staged changes, or branch vs base.
-- Output formats: rich terminal, Markdown, JSON, SARIF 2.1.0; GitHub job summary.
-- GitHub Action (`uses: mann-uofg/codeview-mcp@v2`) posting a single review with inline comments,
-  SARIF output and risk/verdict outputs.
-- `.reviewgenie.toml` / `[tool.reviewgenie]` configuration with custom rules and team instructions,
-  read from the PR's base branch for PR reviews.
-- Security hardening against prompt injection, hostile git configuration, SSRF and token leakage.
+Breaking changes from 1.x:
 
-### Changed
-- PyPI name `reviewgenie-mcp` → `reviewgenie`; import package `codeview_mcp` → `reviewgenie`.
-- Environment variables: `GH_TOKEN` still works; `GITHUB_TOKEN` is preferred. AI keys use each
-  provider's own variable (`GEMINI_API_KEY`, `GROQ_API_KEY`, …) instead of `OPENAI_API_KEY`/`OPENAI_BASE_URL`.
-- The CLI is now `reviewgenie review <target>`; `check` is replaced by `--fail-on` / `--max-risk`.
+- The package is now `codeview`, and so is the command. Install it from GitHub.
+- `codeview check <url>` is replaced by `codeview review <url> --fail-on high`.
+- AI keys use each provider's own variable (`GEMINI_API_KEY`, `GROQ_API_KEY`, ...) instead of
+  `OPENAI_API_KEY`/`OPENAI_BASE_URL`. `GITHUB_TOKEN` is preferred, though `GH_TOKEN` still works.
 
-### Removed
-- ChromaDB/embedding-based comment placement (findings are now anchored to exact diff lines),
-  the keyring dependency, OpenTelemetry console tracing, the stub test generator and the benchmark script.
+## 1.3.0 (2025)
 
-### Migration from 1.x
-```bash
-pip uninstall reviewgenie-mcp && pip install reviewgenie
-reviewgenie review https://github.com/OWNER/REPO/pull/N --fail-on high   # was: reviewgenie check <url>
-```
-
-## [1.3.0] - 2025
-- Last release of the original `reviewgenie-mcp` package.
+Last version of the original implementation.

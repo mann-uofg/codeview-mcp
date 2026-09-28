@@ -3,7 +3,7 @@ requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [project]
-name = "reviewgenie"
+name = "codeview-mcp"
 dynamic = ["version"]
 description = "AI code review for pull requests and local changes: an MCP server, a CLI and a GitHub Action, running on free-tier models."
 readme = "README.md"
@@ -42,7 +42,7 @@ Issues = "https://github.com/mann-uofg/codeview-mcp/issues"
 Changelog = "https://github.com/mann-uofg/codeview-mcp/blob/main/CHANGELOG.md"
 
 [project.scripts]
-reviewgenie = "reviewgenie.cli:app"
+codeview = "codeview.cli:app"
 
 [dependency-groups]
 dev = [
@@ -57,13 +57,13 @@ dev = [
 ]
 
 [tool.hatch.version]
-path = "src/reviewgenie/__init__.py"
+path = "src/codeview/__init__.py"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/reviewgenie"]
+packages = ["src/codeview"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src/reviewgenie", "tests", "README.md", "LICENSE", "CHANGELOG.md"]
+include = ["src/codeview", "tests", "README.md", "LICENSE", "CHANGELOG.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -74,7 +74,7 @@ addopts = "-ra --strict-markers"
 filterwarnings = ["error::pytest.PytestUnraisableExceptionWarning"]
 
 [tool.coverage.run]
-source = ["reviewgenie"]
+source = ["codeview"]
 branch = true
 
 [tool.ruff]
@@ -88,13 +88,13 @@ ignore = ["PLC0415", "PLR0917", "PLR0913", "PLR2004", "PLR0911", "PLR0912", "PLR
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101", "S105", "S106", "S108", "PLR2004", "PT011", "PT018", "RUF015", "E501"]
-"src/reviewgenie/rules/builtin.py" = ["E501", "S105"]
+"src/codeview/rules/builtin.py" = ["E501", "S105"]
 
 [tool.mypy]
 python_version = "3.11"
 strict = true
 warn_unreachable = true
-files = ["src/reviewgenie"]
+files = ["src/codeview"]
 
 [[tool.mypy.overrides]]
 module = ["mcp.*", "mcp_types.*"]

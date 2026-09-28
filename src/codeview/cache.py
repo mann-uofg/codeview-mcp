@@ -18,8 +18,8 @@ DEFAULT_TTL = 7 * 24 * 3600
 
 
 def cache_dir() -> Path:
-    override = os.environ.get("RG_CACHE_DIR")
-    return Path(override) if override else Path(user_cache_dir("reviewgenie", appauthor=False))
+    override = os.environ.get("CODEVIEW_CACHE_DIR")
+    return Path(override) if override else Path(user_cache_dir("codeview", appauthor=False))
 
 
 def make_key(*parts: str) -> str:

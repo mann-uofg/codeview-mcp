@@ -1,7 +1,7 @@
 """Free-tier, OpenAI-compatible LLM providers.
 
 Every provider here can be used at no cost: either through a free API tier or by running the
-model locally with Ollama. Defaults can be overridden with ``RG_MODEL`` / ``model =``.
+model locally with Ollama. Defaults can be overridden with ``CODEVIEW_MODEL`` / ``model =``.
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ class Provider:
 
     def is_configured(self) -> bool:
         if self.local:
-            return os.environ.get("RG_OLLAMA", "").strip().lower() in {"1", "true", "yes", "on"} or bool(
+            return os.environ.get("CODEVIEW_OLLAMA", "").strip().lower() in {"1", "true", "yes", "on"} or bool(
                 os.environ.get("OLLAMA_HOST")
             )
         return self.api_key() is not None
@@ -90,7 +90,7 @@ PROVIDERS: dict[str, Provider] = {
             name="openai-compatible",
             label="Any OpenAI-compatible endpoint",
             base_url="",
-            key_envs=("RG_API_KEY",),
+            key_envs=("CODEVIEW_API_KEY",),
             default_model="",
             budget_chars=80_000,
             signup_url="",
@@ -108,12 +108,12 @@ def resolve_base_url(provider: Provider) -> str:
             host = host if host.startswith(("http://", "https://")) else f"http://{host}"
             return host.rstrip("/") + "/v1"
     if provider.name == "openai-compatible":
-        return os.environ.get("RG_BASE_URL", "").strip().rstrip("/")
+        return os.environ.get("CODEVIEW_BASE_URL", "").strip().rstrip("/")
     return provider.base_url
 
 
 def custom_endpoint_configured() -> bool:
-    return bool(os.environ.get("RG_BASE_URL", "").strip() and os.environ.get("RG_MODEL", "").strip())
+    return bool(os.environ.get("CODEVIEW_BASE_URL", "").strip() and os.environ.get("CODEVIEW_MODEL", "").strip())
 
 
 def candidate_providers(name: str) -> list[Provider]:

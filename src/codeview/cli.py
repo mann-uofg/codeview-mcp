@@ -1,4 +1,4 @@
-"""Command-line interface: ``reviewgenie review``, ``serve``, ``providers``, ``rules``, ``init``."""
+"""Command-line interface: ``codeview review``, ``serve``, ``providers``, ``rules``, ``init``."""
 
 from __future__ import annotations
 
@@ -17,17 +17,19 @@ from rich.console import Console
 from rich.markup import escape
 from rich.table import Table
 
-from reviewgenie import __version__
-from reviewgenie.cache import ResponseCache
-from reviewgenie.config import CONFIG_FILENAME, EXAMPLE_CONFIG, Config, ConfigError, load_config
-from reviewgenie.llm.client import LLMError
-from reviewgenie.models import ReviewReport
-from reviewgenie.render import ICONS, RISK_ICONS, VERDICT_TEXT, to_markdown, to_sarif
-from reviewgenie.sources.github import GitHubError, parse_pr_ref
+from codeview import __version__
+from codeview.cache import ResponseCache
+from codeview.config import CONFIG_FILENAME, EXAMPLE_CONFIG, Config, ConfigError, load_config
+from codeview.llm.client import LLMError
+from codeview.models import ReviewReport, plural
+from codeview.render import LABELS, VERDICT_TEXT, to_markdown, to_sarif
+from codeview.sources.github import GitHubError, parse_pr_ref
+
+GIT_SOURCE = "git+https://github.com/mann-uofg/codeview-mcp"
 
 app = typer.Typer(
-    name="reviewgenie",
-    help="🧞 AI code review for pull requests and local changes, on free-tier models. Also an MCP server.",
+    name="codeview",
+    help="AI code review for pull requests and local changes, on free-tier models. Also an MCP server.",
     no_args_is_help=True,
     add_completion=False,
     rich_markup_mode="rich",
@@ -53,7 +55,7 @@ def _utf8_stdout() -> None:
 
 def _version(value: bool) -> None:
     if value:
-        typer.echo(f"reviewgenie {__version__}")
+        typer.echo(f"codeview {__version__}")
         raise typer.Exit
 
 
@@ -79,18 +81,18 @@ def _fail(message: str, code: int = 2) -> typer.Exit:
 
 def print_text(report: ReviewReport, console: Console) -> None:
     r = report
-    console.print(f"\n[bold]🧞 ReviewGenie[/] · {escape(r.target)}")
+    console.print(f"\n[bold]codeview[/] · {escape(r.target)}")
     if r.title:
         console.print(f"[dim]{escape(r.title)}[/]")
+    color = {"low": "green", "medium": "yellow", "high": "red", "critical": "bold red"}[r.risk.level]
     console.print(
-        f"{VERDICT_TEXT[r.verdict]} · Risk {RISK_ICONS[r.risk.level]} [bold]{r.risk.score}/100[/] "
-        f"({r.risk.level}) · {r.stats.files_reviewed} files · "
-        f"[green]+{r.stats.additions}[/]/[red]-{r.stats.deletions}[/]\n"
+        f"{VERDICT_TEXT[r.verdict]} · risk [{color}]{r.risk.score}/100 ({r.risk.level})[/] · "
+        f"{plural(r.stats.files_reviewed, 'file')} · [green]+{r.stats.additions}[/]/[red]-{r.stats.deletions}[/]\n"
     )
     console.print(escape(r.summary), soft_wrap=True)
     if r.findings:
         table = Table(show_header=True, header_style="bold", expand=True, show_lines=True)
-        table.add_column("", width=2)
+        table.add_column("Severity", width=9)
         table.add_column("Finding", ratio=3)
         table.add_column("Location", ratio=1, overflow="fold")
         table.add_column("Source", width=11)
@@ -99,14 +101,14 @@ def print_text(report: ReviewReport, console: Console) -> None:
             if f.suggestion:
                 body += f"\n[cyan]→ {escape(f.suggestion)}[/]"
             table.add_row(
-                ICONS[f.severity],
+                LABELS[f.severity],
                 body,
                 escape(f"{f.path}:{f.line}" if f.line else f.path),
                 f.rule_id if f.source == "static" else "AI",
             )
         console.print(table)
     else:
-        console.print("\n[green]No issues found.[/] 🎉")
+        console.print("\n[green]No issues found.[/]")
     engine = (
         f"{r.ai.provider} · {r.ai.model}{' (cached)' if r.ai.cached else ''}"
         if r.ai and not r.ai.error
@@ -116,7 +118,7 @@ def print_text(report: ReviewReport, console: Console) -> None:
     if r.ai and r.ai.error:
         console.print(f"[yellow]AI pass unavailable:[/] {escape(r.ai.error)}")
     elif r.ai is None:
-        console.print("[dim]Tip: set GEMINI_API_KEY (free) for AI review — run `reviewgenie providers`.[/]")
+        console.print("[dim]Tip: set GEMINI_API_KEY (free) for AI review — run `codeview providers`.[/]")
 
 
 def _emit(report: ReviewReport, fmt: OutputFormat, output: Path | None) -> None:
@@ -176,7 +178,7 @@ def review(
     sarif_output: Annotated[Path | None, typer.Option(help="Also write a SARIF 2.1.0 report to this file.")] = None,
 ) -> None:
     """Review a GitHub pull request, local git changes, or a diff file."""
-    from reviewgenie.reviewer import (
+    from codeview.reviewer import (
         ReviewOutcome,
         apply_focus,
         publish_review,
@@ -184,7 +186,7 @@ def review(
         review_local,
         review_pull_request,
     )
-    from reviewgenie.sources.local import GitError, LocalMode
+    from codeview.sources.local import GitError, LocalMode
 
     try:
         config: Config | None = load_config(config_path) if config_path else None
@@ -212,7 +214,7 @@ def review(
             ref = parse_pr_ref(target)
 
             async def _pr() -> tuple[ReviewOutcome, dict[str, object] | None]:
-                from reviewgenie.sources.github import GitHubClient
+                from codeview.sources.github import GitHubClient
 
                 async with GitHubClient() as gh:
                     outcome = await review_pull_request(
@@ -262,10 +264,10 @@ def review(
     threshold = outcome.config.fail_on
     worst = report.worst()
     if threshold is not None and worst is not None and worst.rank >= threshold.rank:
-        err.print(f"[red]✗ findings at or above '{threshold.value}': failing[/]")
+        err.print(f"[red]findings at or above '{threshold.value}': failing[/]")
         raise typer.Exit(1)
     if max_risk is not None and report.risk.score > max_risk:
-        err.print(f"[red]✗ risk {report.risk.score} exceeds --max-risk {max_risk}[/]")
+        err.print(f"[red]risk {report.risk.score} exceeds --max-risk {max_risk}[/]")
         raise typer.Exit(1)
 
 
@@ -287,7 +289,7 @@ def serve(
     port: Annotated[int, typer.Option(help="HTTP port.")] = 8765,
 ) -> None:
     """Run the MCP server (stdio by default, for MCP clients)."""
-    from reviewgenie.server import run
+    from codeview.server import run
 
     run("http" if http else "stdio", host=host, port=port)
 
@@ -295,18 +297,18 @@ def serve(
 @app.command()
 def providers() -> None:
     """Show free AI providers, which are configured, and how to get a key."""
-    from reviewgenie.server import _providers_info
+    from codeview.server import _providers_info
 
     info = _providers_info()
     table = Table(title="AI providers (all free)", show_lines=False)
-    for col in ("", "Provider", "Default model", "Key variable", "Get a key"):
+    for col in ("Configured", "Provider", "Default model", "Key variable", "Get a key"):
         table.add_column(col)
     for p in info["providers"]:
         table.add_row(
-            "✅" if p["configured"] else "·",
+            "yes" if p["configured"] else "-",
             p["label"],
-            p["default_model"] or "RG_MODEL",
-            ", ".join(p["key_env"] or ["RG_OLLAMA=1" if p["name"] == "ollama" else "RG_BASE_URL"]),
+            p["default_model"] or "CODEVIEW_MODEL",
+            ", ".join(p["key_env"] or ["CODEVIEW_OLLAMA=1" if p["name"] == "ollama" else "CODEVIEW_BASE_URL"]),
             p["get_a_key"] or "",
         )
     Console().print(table)
@@ -318,7 +320,7 @@ def providers() -> None:
 @app.command()
 def rules(category: Annotated[str | None, typer.Option(help="Filter by category.")] = None) -> None:
     """List built-in static rules."""
-    from reviewgenie.rules.builtin import BUILTIN_RULES
+    from codeview.rules.builtin import BUILTIN_RULES
 
     table = Table(show_lines=False)
     for col in ("ID", "Severity", "Category", "Title", "CWE"):
@@ -326,13 +328,13 @@ def rules(category: Annotated[str | None, typer.Option(help="Filter by category.
     for r in BUILTIN_RULES:
         if category and r.category.value != category.lower():
             continue
-        table.add_row(r.id, f"{ICONS[r.severity]} {r.severity.value}", r.category.value, r.title, r.cwe or "")
+        table.add_row(r.id, r.severity.value, r.category.value, r.title, r.cwe or "")
     Console().print(table)
 
 
 @app.command()
 def init(force: Annotated[bool, typer.Option("--force", help="Overwrite an existing file.")] = False) -> None:
-    """Create a commented .reviewgenie.toml in the current directory."""
+    """Create a commented .codeview.toml in the current directory."""
     path = Path(CONFIG_FILENAME)
     if path.exists() and not force:
         raise _fail(f"{path} already exists (use --force to overwrite)")
@@ -342,12 +344,12 @@ def init(force: Annotated[bool, typer.Option("--force", help="Overwrite an exist
 
 @app.command("mcp-config")
 def mcp_config() -> None:
-    """Print a JSON snippet to register ReviewGenie in an MCP client."""
+    """Print a JSON snippet to register codeview in an MCP client."""
     snippet = {
         "mcpServers": {
-            "reviewgenie": {
+            "codeview": {
                 "command": "uvx",
-                "args": ["reviewgenie", "serve"],
+                "args": ["--from", GIT_SOURCE, "codeview", "serve"],
                 "env": {
                     "GEMINI_API_KEY": "<free key from https://aistudio.google.com/apikey>",
                     "GITHUB_TOKEN": "<optional: needed for private repos and posting reviews>",  # nosec B105

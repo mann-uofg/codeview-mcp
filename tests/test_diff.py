@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import textwrap
 
+from codeview.diff import is_noise, language_for, matches_any, parse_diff, render_for_model
 from conftest import SAMPLE_DIFF, make_diff
-from reviewgenie.diff import is_noise, language_for, matches_any, parse_diff, render_for_model
 
 
 def test_parses_files_hunks_and_line_numbers() -> None:

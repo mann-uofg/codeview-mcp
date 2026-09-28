@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from reviewgenie.diff import parse_diff
-from reviewgenie.sources.local import GitError, local_diff, validate_ref
+from codeview.diff import parse_diff
+from codeview.sources.local import GitError, local_diff, validate_ref
 
 pytestmark = pytest.mark.skipif(shutil.which("git") is None, reason="git not installed")
 
@@ -83,7 +83,7 @@ def test_repository_config_cannot_execute_commands(repo: Path, tmp_path: Path) -
     git(repo, "add", ".gitattributes")
     git(repo, "commit", "-qm", "attrs")
     (repo / "app.py").write_text("def f():\n    return 3\n", encoding="utf-8")
-    # The helper's own plain `git add/commit` above may trigger the hooks; only ReviewGenie's calls count.
+    # The helper's own plain `git add/commit` above may trigger the hooks; only codeview's calls count.
     marker.unlink(missing_ok=True)
     _, _, diff = local_diff(repo, "working")
     local_diff(repo, "staged")

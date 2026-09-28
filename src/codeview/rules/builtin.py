@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import re
 
-from reviewgenie.models import Category, Severity
-from reviewgenie.rules.engine import Rule
+from codeview.models import Category, Severity
+from codeview.rules.engine import Rule
 
 C, H, M, L, N = Severity.CRITICAL, Severity.HIGH, Severity.MEDIUM, Severity.LOW, Severity.INFO
 SEC, BUG, PERF, MAINT, TEST = (
@@ -65,9 +65,9 @@ def _r(
 _ROTATE = "Remove it from the change, rotate the credential immediately (it is now in git history) and load it from a secret manager or environment variable."
 
 BUILTIN_RULES: list[Rule] = [
-    # ── Secrets ──────────────────────────────────────────────────────────────────────────────
+    # Secrets
     _r(
-        "RG-SEC-001",
+        "CV-SEC-001",
         "AWS access key committed",
         C,
         SEC,
@@ -78,7 +78,7 @@ BUILTIN_RULES: list[Rule] = [
         secret=True,
     ),
     _r(
-        "RG-SEC-002",
+        "CV-SEC-002",
         "GitHub token committed",
         C,
         SEC,
@@ -89,7 +89,7 @@ BUILTIN_RULES: list[Rule] = [
         secret=True,
     ),
     _r(
-        "RG-SEC-003",
+        "CV-SEC-003",
         "Private key committed",
         C,
         SEC,
@@ -99,7 +99,7 @@ BUILTIN_RULES: list[Rule] = [
         cwe="CWE-321",
     ),
     _r(
-        "RG-SEC-004",
+        "CV-SEC-004",
         "Slack token committed",
         C,
         SEC,
@@ -110,7 +110,7 @@ BUILTIN_RULES: list[Rule] = [
         secret=True,
     ),
     _r(
-        "RG-SEC-005",
+        "CV-SEC-005",
         "Stripe live key committed",
         C,
         SEC,
@@ -121,7 +121,7 @@ BUILTIN_RULES: list[Rule] = [
         secret=True,
     ),
     _r(
-        "RG-SEC-006",
+        "CV-SEC-006",
         "Google API key committed",
         H,
         SEC,
@@ -132,7 +132,7 @@ BUILTIN_RULES: list[Rule] = [
         secret=True,
     ),
     _r(
-        "RG-SEC-007",
+        "CV-SEC-007",
         "AI provider API key committed",
         C,
         SEC,
@@ -143,7 +143,7 @@ BUILTIN_RULES: list[Rule] = [
         secret=True,
     ),
     _r(
-        "RG-SEC-008",
+        "CV-SEC-008",
         "Hard-coded credential",
         H,
         SEC,
@@ -156,7 +156,7 @@ BUILTIN_RULES: list[Rule] = [
         ignore_if=_PLACEHOLDER,
     ),
     _r(
-        "RG-SEC-009",
+        "CV-SEC-009",
         "Credentials embedded in URL",
         H,
         SEC,
@@ -169,7 +169,7 @@ BUILTIN_RULES: list[Rule] = [
         ignore_if=_PLACEHOLDER,
     ),
     _r(
-        "RG-SEC-010",
+        "CV-SEC-010",
         "JSON Web Token committed",
         H,
         SEC,
@@ -180,9 +180,9 @@ BUILTIN_RULES: list[Rule] = [
         secret=True,
         skip_tests=True,
     ),
-    # ── Injection & dangerous APIs ───────────────────────────────────────────────────────────
+    # Injection & dangerous APIs
     _r(
-        "RG-SEC-020",
+        "CV-SEC-020",
         "Dynamic code execution",
         H,
         SEC,
@@ -193,7 +193,7 @@ BUILTIN_RULES: list[Rule] = [
         languages=PY,
     ),
     _r(
-        "RG-SEC-021",
+        "CV-SEC-021",
         "Dynamic code execution",
         H,
         SEC,
@@ -204,7 +204,7 @@ BUILTIN_RULES: list[Rule] = [
         languages=JS,
     ),
     _r(
-        "RG-SEC-022",
+        "CV-SEC-022",
         "Shell command injection risk",
         H,
         SEC,
@@ -215,7 +215,7 @@ BUILTIN_RULES: list[Rule] = [
         languages=PY,
     ),
     _r(
-        "RG-SEC-023",
+        "CV-SEC-023",
         "Shell command execution",
         M,
         SEC,
@@ -226,7 +226,7 @@ BUILTIN_RULES: list[Rule] = [
         languages=PY,
     ),
     _r(
-        "RG-SEC-024",
+        "CV-SEC-024",
         "Shell command execution",
         M,
         SEC,
@@ -236,7 +236,7 @@ BUILTIN_RULES: list[Rule] = [
         cwe="CWE-78",
     ),
     _r(
-        "RG-SEC-025",
+        "CV-SEC-025",
         "SQL built from strings",
         H,
         SEC,
@@ -248,7 +248,7 @@ BUILTIN_RULES: list[Rule] = [
         cwe="CWE-89",
     ),
     _r(
-        "RG-SEC-026",
+        "CV-SEC-026",
         "Unsafe deserialization",
         H,
         SEC,
@@ -259,7 +259,7 @@ BUILTIN_RULES: list[Rule] = [
         languages=PY,
     ),
     _r(
-        "RG-SEC-027",
+        "CV-SEC-027",
         "Unsafe deserialization",
         H,
         SEC,
@@ -269,7 +269,7 @@ BUILTIN_RULES: list[Rule] = [
         cwe="CWE-502",
     ),
     _r(
-        "RG-SEC-028",
+        "CV-SEC-028",
         "TLS certificate verification disabled",
         H,
         SEC,
@@ -279,7 +279,7 @@ BUILTIN_RULES: list[Rule] = [
         cwe="CWE-295",
     ),
     _r(
-        "RG-SEC-029",
+        "CV-SEC-029",
         "Weak hash algorithm",
         M,
         SEC,
@@ -289,7 +289,7 @@ BUILTIN_RULES: list[Rule] = [
         cwe="CWE-327",
     ),
     _r(
-        "RG-SEC-030",
+        "CV-SEC-030",
         "Cross-site scripting sink",
         M,
         SEC,
@@ -299,7 +299,7 @@ BUILTIN_RULES: list[Rule] = [
         cwe="CWE-79",
     ),
     _r(
-        "RG-SEC-031",
+        "CV-SEC-031",
         "Auto-escaping disabled",
         M,
         SEC,
@@ -310,7 +310,7 @@ BUILTIN_RULES: list[Rule] = [
         languages=PY | {"html"},
     ),
     _r(
-        "RG-SEC-032",
+        "CV-SEC-032",
         "Insecure randomness for secrets",
         M,
         SEC,
@@ -320,7 +320,7 @@ BUILTIN_RULES: list[Rule] = [
         cwe="CWE-338",
     ),
     _r(
-        "RG-SEC-033",
+        "CV-SEC-033",
         "Permissive CORS policy",
         M,
         SEC,
@@ -330,7 +330,7 @@ BUILTIN_RULES: list[Rule] = [
         cwe="CWE-942",
     ),
     _r(
-        "RG-SEC-034",
+        "CV-SEC-034",
         "Debug mode enabled",
         M,
         SEC,
@@ -342,7 +342,7 @@ BUILTIN_RULES: list[Rule] = [
         skip_tests=True,
     ),
     _r(
-        "RG-SEC-035",
+        "CV-SEC-035",
         "World-writable permissions",
         M,
         SEC,
@@ -352,7 +352,7 @@ BUILTIN_RULES: list[Rule] = [
         cwe="CWE-732",
     ),
     _r(
-        "RG-SEC-036",
+        "CV-SEC-036",
         "Remote script piped to shell",
         M,
         SEC,
@@ -362,7 +362,7 @@ BUILTIN_RULES: list[Rule] = [
         cwe="CWE-494",
     ),
     _r(
-        "RG-SEC-037",
+        "CV-SEC-037",
         "Path traversal risk",
         M,
         SEC,
@@ -372,7 +372,7 @@ BUILTIN_RULES: list[Rule] = [
         cwe="CWE-22",
     ),
     _r(
-        "RG-SEC-038",
+        "CV-SEC-038",
         "Server-side request forgery risk",
         M,
         SEC,
@@ -381,9 +381,9 @@ BUILTIN_RULES: list[Rule] = [
         suggestion="Validate the URL against an allow-list of hosts and block private address ranges.",
         cwe="CWE-918",
     ),
-    # ── CI/CD supply chain ───────────────────────────────────────────────────────────────────
+    # CI/CD supply chain
     _r(
-        "RG-SEC-050",
+        "CV-SEC-050",
         "Workflow runs on pull_request_target",
         H,
         SEC,
@@ -394,7 +394,7 @@ BUILTIN_RULES: list[Rule] = [
         paths=WORKFLOWS,
     ),
     _r(
-        "RG-SEC-051",
+        "CV-SEC-051",
         "Script injection in workflow",
         H,
         SEC,
@@ -405,7 +405,7 @@ BUILTIN_RULES: list[Rule] = [
         paths=WORKFLOWS,
     ),
     _r(
-        "RG-SEC-052",
+        "CV-SEC-052",
         "Action pinned to a moving branch",
         L,
         SEC,
@@ -416,7 +416,7 @@ BUILTIN_RULES: list[Rule] = [
         paths=WORKFLOWS,
     ),
     _r(
-        "RG-SEC-053",
+        "CV-SEC-053",
         "Over-broad workflow permissions",
         M,
         SEC,
@@ -427,7 +427,7 @@ BUILTIN_RULES: list[Rule] = [
         paths=WORKFLOWS,
     ),
     _r(
-        "RG-SEC-054",
+        "CV-SEC-054",
         "Unpinned container base image",
         L,
         SEC,
@@ -436,9 +436,9 @@ BUILTIN_RULES: list[Rule] = [
         suggestion="Pin a version tag (ideally plus @sha256 digest).",
         languages=frozenset({"dockerfile"}),
     ),
-    # ── Bugs ─────────────────────────────────────────────────────────────────────────────────
+    # Bugs
     _r(
-        "RG-BUG-001",
+        "CV-BUG-001",
         "Bare except",
         M,
         BUG,
@@ -448,7 +448,7 @@ BUILTIN_RULES: list[Rule] = [
         languages=PY,
     ),
     _r(
-        "RG-BUG-002",
+        "CV-BUG-002",
         "Exception silently swallowed",
         L,
         BUG,
@@ -458,7 +458,7 @@ BUILTIN_RULES: list[Rule] = [
         languages=PY,
     ),
     _r(
-        "RG-BUG-003",
+        "CV-BUG-003",
         "Mutable default argument",
         M,
         BUG,
@@ -468,7 +468,7 @@ BUILTIN_RULES: list[Rule] = [
         languages=PY,
     ),
     _r(
-        "RG-BUG-004",
+        "CV-BUG-004",
         "Comparison to None with ==",
         L,
         BUG,
@@ -477,7 +477,7 @@ BUILTIN_RULES: list[Rule] = [
         languages=PY,
     ),
     _r(
-        "RG-BUG-005",
+        "CV-BUG-005",
         "Empty catch block",
         L,
         BUG,
@@ -486,9 +486,9 @@ BUILTIN_RULES: list[Rule] = [
         suggestion="Handle, log or rethrow the error.",
         languages=JS | frozenset({"java", "csharp", "kotlin", "php"}),
     ),
-    # ── Leftovers & maintainability ─────────────────────────────────────────────────────────
+    # Leftovers & maintainability
     _r(
-        "RG-QUAL-001",
+        "CV-QUAL-001",
         "Debugger statement left in",
         M,
         MAINT,
@@ -498,7 +498,7 @@ BUILTIN_RULES: list[Rule] = [
         languages=PY,
     ),
     _r(
-        "RG-QUAL-002",
+        "CV-QUAL-002",
         "Debugger statement left in",
         M,
         MAINT,
@@ -508,7 +508,7 @@ BUILTIN_RULES: list[Rule] = [
         languages=JS,
     ),
     _r(
-        "RG-QUAL-003",
+        "CV-QUAL-003",
         "Console logging left in",
         L,
         MAINT,
@@ -519,7 +519,7 @@ BUILTIN_RULES: list[Rule] = [
         skip_tests=True,
     ),
     _r(
-        "RG-QUAL-004",
+        "CV-QUAL-004",
         "Focused or skipped test",
         M,
         TEST,
@@ -529,7 +529,7 @@ BUILTIN_RULES: list[Rule] = [
         languages=JS,
     ),
     _r(
-        "RG-QUAL-005",
+        "CV-QUAL-005",
         "Type checking bypassed",
         L,
         MAINT,
@@ -539,7 +539,7 @@ BUILTIN_RULES: list[Rule] = [
         languages=TS,
     ),
     _r(
-        "RG-QUAL-006",
+        "CV-QUAL-006",
         "TODO / FIXME added",
         N,
         MAINT,
@@ -548,7 +548,7 @@ BUILTIN_RULES: list[Rule] = [
         suggestion="Track it in an issue and reference the issue number.",
     ),
     _r(
-        "RG-QUAL-007",
+        "CV-QUAL-007",
         "Unchecked unwrap",
         N,
         BUG,
@@ -559,7 +559,7 @@ BUILTIN_RULES: list[Rule] = [
         skip_tests=True,
     ),
     _r(
-        "RG-QUAL-008",
+        "CV-QUAL-008",
         "Error ignored",
         L,
         BUG,
@@ -569,7 +569,7 @@ BUILTIN_RULES: list[Rule] = [
         languages=GO,
     ),
     _r(
-        "RG-PERF-001",
+        "CV-PERF-001",
         "SELECT *",
         L,
         PERF,

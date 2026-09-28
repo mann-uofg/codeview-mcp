@@ -10,8 +10,8 @@ from urllib.parse import urlsplit
 
 import httpx
 
-from reviewgenie import __version__
-from reviewgenie.llm.providers import Provider, resolve_base_url
+from codeview import __version__
+from codeview.llm.providers import Provider, resolve_base_url
 
 log = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ class LLMError(RuntimeError):
 
 def _check_url(url: str, provider: Provider) -> str:
     if not url:
-        raise LLMError(f"{provider.name}: no base URL configured (set RG_BASE_URL)")
+        raise LLMError(f"{provider.name}: no base URL configured (set CODEVIEW_BASE_URL)")
     parts = urlsplit(url)
     if parts.scheme not in {"http", "https"} or not parts.hostname:
         raise LLMError(f"{provider.name}: invalid base URL")
@@ -53,7 +53,7 @@ class ChatClient:
         self.model = model
         self.max_retries = max_retries
         self._base = _check_url(resolve_base_url(provider), provider)
-        headers = {"User-Agent": f"reviewgenie/{__version__}", "Content-Type": "application/json"}
+        headers = {"User-Agent": f"codeview/{__version__}", "Content-Type": "application/json"}
         key = provider.api_key()
         if key:
             headers["Authorization"] = f"Bearer {key}"
@@ -61,7 +61,7 @@ class ChatClient:
             raise LLMError(f"{provider.name}: missing API key (set {' or '.join(provider.key_envs)})")
         if provider.name == "openrouter":
             headers["HTTP-Referer"] = "https://github.com/mann-uofg/codeview-mcp"
-            headers["X-Title"] = "ReviewGenie"
+            headers["X-Title"] = "codeview"
         self._http = httpx.AsyncClient(
             timeout=httpx.Timeout(timeout, connect=15.0),
             headers=headers,
@@ -121,7 +121,7 @@ class ChatClient:
             if resp.status_code >= 400:
                 hint = ""
                 if self.provider.local and resp.status_code == 404:
-                    hint = f" (run `ollama pull {self.model}` or set RG_MODEL to an installed model)"
+                    hint = f" (run `ollama pull {self.model}` or set CODEVIEW_MODEL to an installed model)"
                 raise LLMError(
                     f"{self.provider.name}: HTTP {resp.status_code}: {_error_text(resp)}{hint}",
                     retryable=resp.status_code in _RETRY_STATUS or resp.status_code in {401, 403, 404},

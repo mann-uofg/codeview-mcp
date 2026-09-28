@@ -9,12 +9,12 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from reviewgenie.cache import ResponseCache, make_key
-from reviewgenie.config import Config
-from reviewgenie.diff import DiffFile, render_for_model
-from reviewgenie.llm.client import ChatClient, LLMError
-from reviewgenie.llm.providers import Provider, candidate_providers
-from reviewgenie.models import AIInfo, Category, Finding, Severity
+from codeview.cache import ResponseCache, make_key
+from codeview.config import Config
+from codeview.diff import DiffFile, render_for_model
+from codeview.llm.client import ChatClient, LLMError
+from codeview.llm.providers import Provider, candidate_providers
+from codeview.models import AIInfo, Category, Finding, Severity
 
 log = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ PROMPT_VERSION = "2"
 MAX_TITLE, MAX_TEXT = 120, 1500
 
 SYSTEM_PROMPT = """\
-You are ReviewGenie, a meticulous senior software engineer doing a pull-request review.
+You are codeview, a meticulous senior software engineer doing a pull-request review.
 
 Review ONLY the changes shown. Focus on what a strong human reviewer would block or seriously question:
 correctness bugs, security vulnerabilities, data loss, race conditions, broken error handling,
@@ -216,13 +216,13 @@ async def ai_review(
     for provider in candidates:
         # An explicit model applies to the first (preferred) provider; fallbacks use their defaults.
         if provider.name == "openai-compatible":
-            model = os.environ.get("RG_MODEL", "").strip() or config.model or ""
+            model = os.environ.get("CODEVIEW_MODEL", "").strip() or config.model or ""
         elif config.model and provider is candidates[0]:
             model = config.model
         else:
             model = provider.default_model
         if not model:
-            errors.append(f"{provider.name}: no model configured (set RG_MODEL)")
+            errors.append(f"{provider.name}: no model configured (set CODEVIEW_MODEL)")
             continue
         diff_text, included, truncated = render_for_model(files, provider.budget_chars)
         if not included:

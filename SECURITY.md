@@ -1,21 +1,14 @@
-# Security Policy
+# Security policy
 
-## Reporting a vulnerability
+Please don't open a public issue for security problems. Report them privately through
+[GitHub security advisories](https://github.com/mann-uofg/codeview-mcp/security/advisories/new).
+I'll reply within a few days.
 
-Please **do not open a public issue** for security problems. Use GitHub's private
-[security advisory form](https://github.com/mann-uofg/codeview-mcp/security/advisories/new) instead.
-You should get a response within a few days. Once a fix is released you'll be credited unless you prefer not to be.
+Only the latest version on `main` gets fixes.
 
-## Supported versions
+codeview treats diffs, PR titles and descriptions, repository contents and model output as untrusted input.
+The mitigations are listed under "Security notes" in the README. I'm especially interested in reports of:
 
-| Version | Supported |
-|---|---|
-| 2.x | ✅ |
-| 1.x (`reviewgenie-mcp`) | ❌ |
-
-## Threat model
-
-ReviewGenie treats diffs, pull-request text, repository contents and model output as untrusted.
-The README's [Security model](README.md#security-model) section lists the mitigations. Reports about
-bypassing any of them (prompt injection that leads to posting attacker-controlled content, code execution
-through repository configuration, token exfiltration, SSRF) are especially welcome.
+- prompt injection that gets attacker-controlled text posted to a PR
+- code execution through repository configuration
+- token leakage or SSRF

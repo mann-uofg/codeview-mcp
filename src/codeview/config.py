@@ -1,7 +1,7 @@
-"""Configuration: ``.reviewgenie.toml`` or ``[tool.reviewgenie]`` in ``pyproject.toml``.
+"""Configuration: ``.codeview.toml`` or ``[tool.codeview]`` in ``pyproject.toml``.
 
 For pull-request reviews the configuration is read from the PR's *base* branch (see
-:mod:`reviewgenie.reviewer`), so a pull request cannot weaken its own review.
+:mod:`codeview.reviewer`), so a pull request cannot weaken its own review.
 """
 
 from __future__ import annotations
@@ -14,9 +14,9 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
-from reviewgenie.models import Category, Severity
+from codeview.models import Category, Severity
 
-CONFIG_FILENAME = ".reviewgenie.toml"
+CONFIG_FILENAME = ".codeview.toml"
 MAX_CUSTOM_PATTERN = 300
 
 
@@ -84,11 +84,11 @@ class Config(BaseModel):
         return Severity.parse(value)
 
     def with_env(self) -> Config:
-        """Apply ``RG_PROVIDER`` / ``RG_MODEL`` environment overrides."""
+        """Apply ``CODEVIEW_PROVIDER`` / ``CODEVIEW_MODEL`` environment overrides."""
         updates: dict[str, Any] = {}
-        if provider := os.environ.get("RG_PROVIDER"):
+        if provider := os.environ.get("CODEVIEW_PROVIDER"):
             updates["provider"] = provider.strip().lower()
-        if model := os.environ.get("RG_MODEL"):
+        if model := os.environ.get("CODEVIEW_MODEL"):
             updates["model"] = model.strip()
         return self.model_copy(update=updates) if updates else self
 
@@ -99,7 +99,7 @@ def parse_config(text: str, *, source: str = "config", pyproject: bool = False) 
     except tomllib.TOMLDecodeError as exc:
         raise ConfigError(f"{source}: invalid TOML: {exc}") from exc
     if pyproject:
-        data = data.get("tool", {}).get("reviewgenie", {})
+        data = data.get("tool", {}).get("codeview", {})
     try:
         return Config.model_validate(data)
     except ValidationError as exc:
@@ -114,7 +114,7 @@ def find_config(start: Path) -> Path | None:
         if candidate.is_file():
             return candidate
         pyproject = folder / "pyproject.toml"
-        if pyproject.is_file() and "[tool.reviewgenie" in pyproject.read_text(encoding="utf-8", errors="replace"):
+        if pyproject.is_file() and "[tool.codeview" in pyproject.read_text(encoding="utf-8", errors="replace"):
             return pyproject
         if (folder / ".git").exists():
             break
@@ -133,18 +133,18 @@ def load_config(path: Path | None = None, *, start: Path | None = None) -> Confi
 
 
 EXAMPLE_CONFIG = """\
-# ReviewGenie configuration. Every key is optional.
+# codeview configuration. Every key is optional.
 
 # AI provider: auto | gemini | groq | cerebras | openrouter | ollama | openai-compatible | none
 provider = "auto"
 # model = "..."            # override the provider's default model
 
 min_severity = "low"       # drop findings below this level
-fail_on = "high"           # `reviewgenie review` exits 1 at/above this level ("never" to disable)
+fail_on = "high"           # `codeview review` exits 1 at/above this level ("never" to disable)
 max_findings = 30
 
 exclude = ["docs/**", "**/*.generated.ts"]
-disable_rules = []          # e.g. ["RG-QUAL-001"]
+disable_rules = []          # e.g. ["CV-QUAL-001"]
 focus = ["security", "bugs"]
 
 instructions = \"\"\"

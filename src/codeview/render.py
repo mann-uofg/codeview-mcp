@@ -6,24 +6,23 @@ import hashlib
 import re
 from typing import Any
 
-from reviewgenie import __version__
-from reviewgenie.diff import DiffFile
-from reviewgenie.models import Finding, ReviewReport, Severity
-from reviewgenie.sources.github import REVIEW_MARKER, neutralize_mentions
+from codeview import __version__
+from codeview.diff import DiffFile
+from codeview.models import Finding, ReviewReport, Severity, plural
+from codeview.sources.github import REVIEW_MARKER, neutralize_mentions
 
 HOMEPAGE = "https://github.com/mann-uofg/codeview-mcp"
-ICONS = {
-    Severity.CRITICAL: "🛑",
-    Severity.HIGH: "🔴",
-    Severity.MEDIUM: "🟠",
-    Severity.LOW: "🟡",
-    Severity.INFO: "🔵",
+LABELS = {
+    Severity.CRITICAL: "Critical",
+    Severity.HIGH: "High",
+    Severity.MEDIUM: "Medium",
+    Severity.LOW: "Low",
+    Severity.INFO: "Info",
 }
-RISK_ICONS = {"low": "🟢", "medium": "🟡", "high": "🟠", "critical": "🔴"}
 VERDICT_TEXT = {
-    "approve": "✅ Looks good",
-    "comment": "💬 Worth a look",
-    "request_changes": "⛔ Changes requested",
+    "approve": "No blocking issues",
+    "comment": "Some things to look at",
+    "request_changes": "Changes requested",
 }
 
 
@@ -57,24 +56,24 @@ def to_markdown(report: ReviewReport, *, heading: bool = True) -> str:
     r = report
     out: list[str] = []
     if heading:
-        out.append("## 🧞 ReviewGenie review\n")
+        out.append("### codeview review\n")
     out.append(
-        f"**{VERDICT_TEXT[r.verdict]}** · Risk {RISK_ICONS[r.risk.level]} **{r.risk.score}/100** "
-        f"({r.risk.level}) · {r.stats.files_reviewed} files · +{r.stats.additions}/-{r.stats.deletions}\n"
+        f"**{VERDICT_TEXT[r.verdict]}.** Risk {r.risk.score}/100 ({r.risk.level}), "
+        f"{plural(r.stats.files_reviewed, 'file')}, +{r.stats.additions}/-{r.stats.deletions}.\n"
     )
     out.append(safe_text(r.summary) + "\n")
 
     if r.findings:
         counts = r.counts()
-        out.append(" · ".join(f"{ICONS[Severity(s)]} {n} {s}" for s, n in reversed(counts.items()) if n) + "\n")
-        out.append("| | Finding | Location | Source |\n|---|---|---|---|")
+        out.append(", ".join(f"{n} {s}" for s, n in reversed(counts.items()) if n) + "\n")
+        out.append("| Severity | Finding | Location | Source |\n|---|---|---|---|")
         for f in r.findings:
             loc = f"`{f.path}:{f.line}`" if f.line else f"`{f.path}`"
             src = f.rule_id if f.source == "static" else "AI"
-            out.append(f"| {ICONS[f.severity]} | **{_cell(f.title)}** — {_cell(f.message)} | {loc} | {src} |")
+            out.append(f"| {LABELS[f.severity]} | **{_cell(f.title)}**: {_cell(f.message)} | {loc} | {src} |")
         out.append("")
     else:
-        out.append("No issues found. 🎉\n")
+        out.append("No issues found.\n")
 
     if r.risk.factors:
         out.append("<details><summary>Risk breakdown</summary>\n")
@@ -89,19 +88,19 @@ def to_markdown(report: ReviewReport, *, heading: bool = True) -> str:
     engine = f"{r.ai.provider} · {r.ai.model}" if r.ai and not r.ai.error else "static rules only"
     if r.ai and r.ai.error:
         engine += f" (AI unavailable: {_cell(r.ai.error[:160])})"
-    out.append(f"<sub>ReviewGenie {__version__} · {engine} · {r.duration_ms} ms · [docs]({HOMEPAGE})</sub>")
+    out.append(f"<sub>codeview {__version__} · {engine} · {r.duration_ms} ms · [docs]({HOMEPAGE})</sub>")
     return "\n".join(out).strip() + "\n"
 
 
 def comment_body(f: Finding) -> str:
-    parts = [f"{ICONS[f.severity]} **{safe_text(f.title)}** · _{f.severity.value} {f.category.value}_"]
+    parts = [f"**{safe_text(f.title)}** ({f.severity.value}, {f.category.value})"]
     parts.append(safe_text(f.message))
     if f.suggestion:
         parts.append("**Suggestion:** " + _suggestion_block(f.suggestion))
     ref = f.rule_id if f.source == "static" else "AI review"
     if f.cwe:
         ref += f" · {f.cwe}"
-    parts.append(f"<sub>{ref}</sub>\n{REVIEW_MARKER}<!-- rg:{finding_key(f)} -->")
+    parts.append(f"<sub>{ref}</sub>\n{REVIEW_MARKER}<!-- cv:{finding_key(f)} -->")
     return "\n\n".join(parts)
 
 
@@ -167,7 +166,7 @@ def to_sarif(report: ReviewReport) -> dict[str, Any]:
                 "level": _SARIF_LEVEL[f.severity],
                 "message": {"text": f"{f.title}: {text}" if f.source == "ai" else text},
                 "locations": [location],
-                "partialFingerprints": {"reviewgenie/v1": finding_key(f)},
+                "partialFingerprints": {"codeview/v1": finding_key(f)},
                 "properties": {"severity": f.severity.value, "source": f.source},
             }
         )
@@ -178,7 +177,7 @@ def to_sarif(report: ReviewReport) -> dict[str, Any]:
             {
                 "tool": {
                     "driver": {
-                        "name": "ReviewGenie",
+                        "name": "codeview",
                         "version": __version__,
                         "informationUri": HOMEPAGE,
                         "rules": list(rules.values()),

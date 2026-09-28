@@ -6,8 +6,7 @@ import httpx
 import pytest
 import respx
 
-from conftest import SAMPLE_DIFF
-from reviewgenie.sources.github import (
+from codeview.sources.github import (
     GitHubClient,
     GitHubError,
     PRRef,
@@ -15,6 +14,7 @@ from reviewgenie.sources.github import (
     parse_pr_ref,
     resolve_token,
 )
+from conftest import SAMPLE_DIFF
 
 API = "https://api.github.com"
 REF = PRRef("octo", "demo", 7)
@@ -158,9 +158,9 @@ async def test_errors_are_descriptive_and_never_leak_the_token() -> None:
 
 @respx.mock
 async def test_get_file_404_is_none() -> None:
-    respx.get(f"{API}/repos/octo/demo/contents/.reviewgenie.toml").mock(return_value=httpx.Response(404, json={}))
+    respx.get(f"{API}/repos/octo/demo/contents/.codeview.toml").mock(return_value=httpx.Response(404, json={}))
     async with GitHubClient(token="t") as gh:
-        assert await gh.get_file(REF, ".reviewgenie.toml", "b" * 40) is None
+        assert await gh.get_file(REF, ".codeview.toml", "b" * 40) is None
 
 
 @respx.mock
@@ -194,8 +194,8 @@ async def test_existing_comment_keys() -> None:
         return_value=httpx.Response(
             200,
             json=[
-                {"body": "hi <!-- reviewgenie --><!-- rg:abc123 -->"},
-                {"body": "human comment <!-- rg:zzz -->"},
+                {"body": "hi <!-- codeview --><!-- cv:abc123 -->"},
+                {"body": "human comment <!-- cv:zzz -->"},
             ],
         )
     )

@@ -4,11 +4,11 @@ from pathlib import Path
 
 import pytest
 
+from codeview.config import EXAMPLE_CONFIG, Config, ConfigError, find_config, load_config, parse_config
+from codeview.diff import parse_diff
+from codeview.models import Category, Finding, Risk, Severity
+from codeview.risk import compute_risk
 from conftest import SAMPLE_DIFF, make_diff
-from reviewgenie.config import EXAMPLE_CONFIG, Config, ConfigError, find_config, load_config, parse_config
-from reviewgenie.diff import parse_diff
-from reviewgenie.models import Category, Finding, Risk, Severity
-from reviewgenie.risk import compute_risk
 
 
 def finding(sev: Severity, path: str = "a.py") -> Finding:
@@ -40,25 +40,25 @@ def test_fail_on_never_and_severity_aliases() -> None:
 
 def test_pyproject_and_discovery(tmp_path: Path) -> None:
     (tmp_path / ".git").mkdir()
-    (tmp_path / "pyproject.toml").write_text('[tool.reviewgenie]\nprovider = "groq"\n', encoding="utf-8")
+    (tmp_path / "pyproject.toml").write_text('[tool.codeview]\nprovider = "groq"\n', encoding="utf-8")
     sub = tmp_path / "src" / "pkg"
     sub.mkdir(parents=True)
     assert find_config(sub) == tmp_path / "pyproject.toml"
     assert load_config(start=sub).provider == "groq"
-    (tmp_path / ".reviewgenie.toml").write_text('provider = "gemini"\n', encoding="utf-8")
+    (tmp_path / ".codeview.toml").write_text('provider = "gemini"\n', encoding="utf-8")
     assert load_config(start=sub).provider == "gemini"
 
 
 def test_discovery_stops_at_git_root(tmp_path: Path) -> None:
-    (tmp_path / ".reviewgenie.toml").write_text('provider = "groq"\n', encoding="utf-8")
+    (tmp_path / ".codeview.toml").write_text('provider = "groq"\n', encoding="utf-8")
     repo = tmp_path / "repo"
     (repo / ".git").mkdir(parents=True)
     assert find_config(repo) is None
 
 
 def test_env_overrides(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("RG_PROVIDER", "Cerebras")
-    monkeypatch.setenv("RG_MODEL", "some-model")
+    monkeypatch.setenv("CODEVIEW_PROVIDER", "Cerebras")
+    monkeypatch.setenv("CODEVIEW_MODEL", "some-model")
     cfg = Config().with_env()
     assert (cfg.provider, cfg.model) == ("cerebras", "some-model")
 

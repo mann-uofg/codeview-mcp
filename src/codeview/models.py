@@ -94,7 +94,7 @@ class Finding(BaseModel):
     title: str
     message: str
     suggestion: str | None = None
-    rule_id: str = Field(description="Static rule id (e.g. RG-SEC-001) or 'AI' for model findings.")
+    rule_id: str = Field(description="Static rule id (e.g. CV-SEC-001) or 'AI' for model findings.")
     source: Literal["static", "ai"]
     cwe: str | None = None
 
@@ -163,3 +163,7 @@ class ReviewReport(BaseModel):
 
     def worst(self) -> Severity | None:
         return max((f.severity for f in self.findings), key=lambda s: s.rank, default=None)
+
+
+def plural(n: int, word: str) -> str:
+    return f"{n} {word}{'' if n == 1 else 's'}"

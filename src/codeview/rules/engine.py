@@ -6,12 +6,12 @@ import re
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 
-from reviewgenie.config import Config, CustomRule
-from reviewgenie.diff import DiffFile, matches_any
-from reviewgenie.models import Category, Finding, Severity
+from codeview.config import Config, CustomRule
+from codeview.diff import DiffFile, matches_any
+from codeview.models import Category, Finding, Severity
 
 MAX_LINE_LENGTH = 2000  # longer lines are almost always minified or generated
-_SUPPRESS_RE = re.compile(r"(?:reviewgenie|rg)-ignore(?:\[(?P<ids>[A-Za-z0-9_.,\s-]+)\])?", re.I)
+_SUPPRESS_RE = re.compile(r"(?:codeview|cv)-ignore(?:\[(?P<ids>[A-Za-z0-9_.,\s-]+)\])?", re.I)
 _TEST_PATH_RE = re.compile(
     r"(^|/)(tests?|__tests__|spec|specs|testdata|fixtures?)/|(^|/)(test_[^/]+|[^/]+_test\.\w+|[^/]+\.(test|spec)\.\w+|conftest\.py)$"
 )
@@ -78,7 +78,7 @@ def compile_custom(rule: CustomRule) -> Rule:
 
 
 def active_rules(config: Config) -> list[Rule]:
-    from reviewgenie.rules.builtin import BUILTIN_RULES
+    from codeview.rules.builtin import BUILTIN_RULES
 
     disabled = {r.upper() for r in config.disable_rules}
     rules = [r for r in BUILTIN_RULES if r.id.upper() not in disabled]

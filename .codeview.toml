@@ -1,10 +1,10 @@
-# ReviewGenie's own configuration (dogfooding).
+# codeview's own configuration (dogfooding).
 provider = "auto"
 fail_on = "high"
 min_severity = "low"
 
 # The rule catalogue necessarily contains the very patterns it detects.
-exclude = ["src/reviewgenie/rules/builtin.py"]
+exclude = ["src/codeview/rules/builtin.py"]
 
 focus = ["security", "bugs", "MCP protocol correctness"]
 instructions = """

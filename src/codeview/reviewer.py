@@ -8,15 +8,15 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from reviewgenie.cache import ResponseCache
-from reviewgenie.config import CONFIG_FILENAME, Config, ConfigError, load_config, parse_config
-from reviewgenie.diff import DiffFile, is_noise, matches_any, parse_diff
-from reviewgenie.llm.review import AIResult, ai_review
-from reviewgenie.models import Category, DiffStats, Finding, ReviewReport, Severity
-from reviewgenie.risk import compute_risk
-from reviewgenie.rules import active_rules, scan
-from reviewgenie.sources.github import GitHubClient, PRRef, PullRequest
-from reviewgenie.sources.local import LocalMode, local_diff
+from codeview.cache import ResponseCache
+from codeview.config import CONFIG_FILENAME, Config, ConfigError, load_config, parse_config
+from codeview.diff import DiffFile, is_noise, matches_any, parse_diff
+from codeview.llm.review import AIResult, ai_review
+from codeview.models import Category, DiffStats, Finding, ReviewReport, Severity, plural
+from codeview.risk import compute_risk
+from codeview.rules import active_rules, scan
+from codeview.sources.github import GitHubClient, PRRef, PullRequest
+from codeview.sources.local import LocalMode, local_diff
 
 log = logging.getLogger(__name__)
 
@@ -84,7 +84,7 @@ def _fallback_summary(stats: DiffStats, findings: list[Finding], ai: AIResult | 
         counts[f.severity.value] = counts.get(f.severity.value, 0) + 1
     breakdown = ", ".join(f"{n} {sev}" for sev, n in counts.items()) or "no issues"
     text = (
-        f"Reviewed {stats.files_reviewed} of {stats.files_changed} changed files "
+        f"Reviewed {stats.files_reviewed} of {plural(stats.files_changed, 'changed file')} "
         f"(+{stats.additions}/-{stats.deletions}): {breakdown}."
     )
     if ai is None:
@@ -145,11 +145,11 @@ async def load_base_config(client: GitHubClient, ref: PRRef, base_sha: str) -> C
     if text is not None:
         return parse_config(text, source=f"{ref.slug}@{base_sha[:7]}:{CONFIG_FILENAME}").with_env()
     text = await client.get_file(ref, "pyproject.toml", base_sha)
-    if text is not None and "[tool.reviewgenie" in text:
+    if text is not None and "[tool.codeview" in text:
         try:
             return parse_config(text, source="pyproject.toml", pyproject=True).with_env()
         except ConfigError as exc:
-            log.warning("ignoring invalid [tool.reviewgenie] in base pyproject.toml: %s", exc)
+            log.warning("ignoring invalid [tool.codeview] in base pyproject.toml: %s", exc)
     return Config().with_env()
 
 
@@ -224,7 +224,7 @@ async def publish_review(
     max_comments: int = 30,
 ) -> dict[str, object]:
     """Post the report as a single GitHub review with inline comments (skipping ones already posted)."""
-    from reviewgenie.render import github_review_payload
+    from codeview.render import github_review_payload
 
     if outcome.pull is None:
         raise ValueError("only pull request reviews can be published")

@@ -5,9 +5,9 @@ from __future__ import annotations
 import math
 import re
 
-from reviewgenie.diff import DiffFile
-from reviewgenie.models import Finding, Risk, RiskFactor, Severity
-from reviewgenie.rules.engine import is_test_path
+from codeview.diff import DiffFile
+from codeview.models import Finding, Risk, RiskFactor, Severity, plural
+from codeview.rules.engine import is_test_path
 
 _SENSITIVE = [
     (
@@ -61,7 +61,7 @@ def compute_risk(files: list[DiffFile], findings: list[Finding], ai_score: int |
             RiskFactor(
                 name="size",
                 points=round(size_pts, 1),
-                detail=f"{changed} changed lines across {len(files)} files",
+                detail=f"{changed} changed lines across {plural(len(files), 'file')}",
             )
         )
     if len(files) > 25:

@@ -1,4 +1,4 @@
-name: ReviewGenie AI Code Review
+name: codeview AI Code Review
 description: Free AI code review for pull requests. Static security rules + free-tier AI, inline comments, risk score and SARIF.
 author: Mann Modi
 branding:
@@ -44,9 +44,9 @@ inputs:
     default: ""
   sarif-file:
     description: Where to write the SARIF report (upload it with github/codeql-action/upload-sarif).
-    default: reviewgenie.sarif
+    default: codeview.sarif
   python-version:
-    description: Python used to run ReviewGenie.
+    description: Python used to run codeview.
     default: "3.13"
 
 outputs:
@@ -73,7 +73,7 @@ runs:
       with:
         python-version: ${{ inputs.python-version }}
 
-    - name: Install ReviewGenie
+    - name: Install codeview
       shell: bash
       env:
         ACTION_PATH: ${{ github.action_path }}
@@ -88,8 +88,8 @@ runs:
         GROQ_API_KEY: ${{ inputs.groq-api-key }}
         CEREBRAS_API_KEY: ${{ inputs.cerebras-api-key }}
         OPENROUTER_API_KEY: ${{ inputs.openrouter-api-key }}
-        RG_PROVIDER: ${{ inputs.provider }}
-        RG_MODEL: ${{ inputs.model }}
+        CODEVIEW_PROVIDER: ${{ inputs.provider }}
+        CODEVIEW_MODEL: ${{ inputs.model }}
         INPUT_PR_URL: ${{ inputs.pr-url }}
         EVENT_PR_URL: ${{ github.event.pull_request.html_url }}
         INPUT_POST: ${{ inputs.post-review }}
@@ -97,7 +97,7 @@ runs:
         INPUT_MAX_RISK: ${{ inputs.max-risk }}
         INPUT_FOCUS: ${{ inputs.focus }}
         INPUT_SARIF: ${{ inputs.sarif-file }}
-        RG_NO_GH_CLI: "1"
+        CODEVIEW_NO_GH_CLI: "1"
       run: |
         set -euo pipefail
         pr="${INPUT_PR_URL:-$EVENT_PR_URL}"
@@ -105,9 +105,9 @@ runs:
           echo "::error::No pull request to review. Run on pull_request events or set pr-url."
           exit 1
         fi
-        [ -n "${RG_MODEL}" ] || unset RG_MODEL
-        args=(review "$pr" --format markdown --output "$RUNNER_TEMP/reviewgenie.md"
-              --json-output "$RUNNER_TEMP/reviewgenie.json" --sarif-output "$INPUT_SARIF"
+        [ -n "${CODEVIEW_MODEL}" ] || unset CODEVIEW_MODEL
+        args=(review "$pr" --format markdown --output "$RUNNER_TEMP/codeview.md"
+              --json-output "$RUNNER_TEMP/codeview.json" --sarif-output "$INPUT_SARIF"
               --fail-on never)
         if [ "$INPUT_POST" = "true" ]; then args+=(--post); fi
         IFS=',' read -ra areas <<< "$INPUT_FOCUS"
@@ -115,9 +115,9 @@ runs:
           area="$(echo "$area" | xargs)"
           [ -n "$area" ] && args+=(--focus "$area")
         done
-        reviewgenie "${args[@]}"
+        codeview "${args[@]}"
 
-        python - "$RUNNER_TEMP/reviewgenie.json" >> "$GITHUB_OUTPUT" <<'PY'
+        python - "$RUNNER_TEMP/codeview.json" >> "$GITHUB_OUTPUT" <<'PY'
         import json, sys
         r = json.load(open(sys.argv[1], encoding="utf-8"))
         print(f"risk-score={r['risk']['score']}")
@@ -126,13 +126,13 @@ runs:
         print(f"findings={len(r['findings'])}")
         PY
 
-        python - "$RUNNER_TEMP/reviewgenie.json" "$INPUT_FAIL_ON" "$INPUT_MAX_RISK" <<'PY'
+        python - "$RUNNER_TEMP/codeview.json" "$INPUT_FAIL_ON" "$INPUT_MAX_RISK" <<'PY'
         import json, sys
         order = ["info", "low", "medium", "high", "critical"]
         report, fail_on, max_risk = json.load(open(sys.argv[1], encoding="utf-8")), sys.argv[2].strip().lower(), sys.argv[3].strip()
         worst = max((order.index(f["severity"]) for f in report["findings"]), default=-1)
         if fail_on in order and worst >= order.index(fail_on):
-            print(f"::error::ReviewGenie found issues at or above '{fail_on}'.")
+            print(f"::error::codeview found issues at or above '{fail_on}'.")
             sys.exit(1)
         if max_risk and report["risk"]["score"] > int(max_risk):
             print(f"::error::Risk score {report['risk']['score']} exceeds {max_risk}.")

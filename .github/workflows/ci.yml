@@ -68,5 +68,5 @@ jobs:
         run: |
           python -m venv /tmp/smoke
           /tmp/smoke/bin/pip install dist/*.whl
-          /tmp/smoke/bin/reviewgenie --version
-          /tmp/smoke/bin/reviewgenie rules > /dev/null
+          /tmp/smoke/bin/codeview --version
+          /tmp/smoke/bin/codeview rules > /dev/null

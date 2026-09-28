@@ -11,10 +11,10 @@ import respx
 from mcp import Client
 from typer.testing import CliRunner
 
+from codeview import __version__
+from codeview.cli import app
+from codeview.server import mcp
 from conftest import SAMPLE_DIFF
-from reviewgenie import __version__
-from reviewgenie.cli import app
-from reviewgenie.server import mcp
 
 runner = CliRunner()
 
@@ -37,7 +37,7 @@ async def test_mcp_lists_tools_resources_and_prompts() -> None:
         assert tools["review_diff_text"].output_schema is not None
 
         uris = {str(r.uri) for r in (await client.list_resources()).resources}
-        assert {"reviewgenie://rules", "reviewgenie://providers", "reviewgenie://config/example"} <= uris
+        assert {"codeview://rules", "codeview://providers", "codeview://config/example"} <= uris
 
         prompts = {p.name for p in (await client.list_prompts()).prompts}
         assert {"deep_review", "security_audit", "suggest_tests", "review_my_changes"} <= prompts
@@ -50,7 +50,7 @@ async def test_mcp_review_diff_tool_returns_structured_report() -> None:
         report = result.structured_content
         assert report is not None
         assert report["verdict"] == "request_changes"
-        assert any(f["rule_id"] == "RG-SEC-025" for f in report["findings"])
+        assert any(f["rule_id"] == "CV-SEC-025" for f in report["findings"])
         assert 0 <= report["risk"]["score"] <= 100
 
 
@@ -77,7 +77,7 @@ async def test_mcp_rules_providers_and_prompt() -> None:
         assert not any(p["configured"] for p in status["providers"])
         prompt = await client.get_prompt("deep_review", {"pr": "octo/demo#7"})
         assert "octo/demo#7" in prompt.messages[0].content.text
-        res = await client.read_resource("reviewgenie://config/example")
+        res = await client.read_resource("codeview://config/example")
         assert "provider" in res.contents[0].text
 
 
@@ -134,14 +134,14 @@ def test_cli_review_diff_file_formats_and_exit_codes(tmp_path: Path) -> None:
         app, ["review", "--diff", str(diff), "--no-ai", "--fail-on", "critical", "-f", "markdown", "-o", str(out)]
     )
     assert res.exit_code == 0
-    assert "ReviewGenie review" in out.read_text(encoding="utf-8")
+    assert "codeview review" in out.read_text(encoding="utf-8")
 
     res = runner.invoke(app, ["review", "--diff", str(diff), "--no-ai", "--fail-on", "never", "--max-risk", "1"])
     assert res.exit_code == 1
 
     res = runner.invoke(app, ["review", "--diff", "-", "--no-ai", "--fail-on", "never"], input=SAMPLE_DIFF)
     assert res.exit_code == 0
-    assert "RG-SEC-025" in res.stdout
+    assert "CV-SEC-025" in res.stdout
 
 
 def test_cli_writes_github_step_summary(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -150,7 +150,7 @@ def test_cli_writes_github_step_summary(tmp_path: Path, monkeypatch: pytest.Monk
     diff = tmp_path / "c.diff"
     diff.write_text(SAMPLE_DIFF, encoding="utf-8")
     runner.invoke(app, ["review", "--diff", str(diff), "--no-ai", "--fail-on", "never"])
-    assert "ReviewGenie review" in summary.read_text(encoding="utf-8")
+    assert "codeview review" in summary.read_text(encoding="utf-8")
 
 
 def test_cli_errors_are_friendly(tmp_path: Path) -> None:
@@ -178,17 +178,18 @@ async def test_mcp_provider_status_never_reveals_keys(monkeypatch: pytest.Monkey
 
 
 def test_cli_rules_providers_init_mcp_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    assert "RG-SEC-001" in runner.invoke(app, ["rules"]).stdout
+    assert "CV-SEC-001" in runner.invoke(app, ["rules"]).stdout
     monkeypatch.setenv("GROQ_API_KEY", "secret-groq-key")
     out = runner.invoke(app, ["providers"]).stdout
     assert "groq" in out.lower()
     assert "secret-groq-key" not in out
     monkeypatch.chdir(tmp_path)
     assert runner.invoke(app, ["init"]).exit_code == 0
-    assert (tmp_path / ".reviewgenie.toml").exists()
+    assert (tmp_path / ".codeview.toml").exists()
     assert runner.invoke(app, ["init"]).exit_code == 2
     snippet = json.loads(runner.invoke(app, ["mcp-config"]).stdout)
-    assert snippet["mcpServers"]["reviewgenie"]["args"] == ["reviewgenie", "serve"]
+    assert snippet["mcpServers"]["codeview"]["args"][-2:] == ["codeview", "serve"]
+    assert "github.com/mann-uofg/codeview-mcp" in snippet["mcpServers"]["codeview"]["args"][1]
     assert runner.invoke(app, ["clear-cache"]).exit_code == 0
 
 

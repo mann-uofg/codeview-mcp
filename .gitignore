@@ -21,4 +21,4 @@ htmlcov/
 !.env.example
 .cache/
 *.sarif
-reviewgenie-report.*
+codeview-report.*

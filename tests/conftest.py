@@ -10,11 +10,11 @@ _ENV_VARS = [
     "GROQ_API_KEY",
     "CEREBRAS_API_KEY",
     "OPENROUTER_API_KEY",
-    "RG_API_KEY",
-    "RG_BASE_URL",
-    "RG_MODEL",
-    "RG_PROVIDER",
-    "RG_OLLAMA",
+    "CODEVIEW_API_KEY",
+    "CODEVIEW_BASE_URL",
+    "CODEVIEW_MODEL",
+    "CODEVIEW_PROVIDER",
+    "CODEVIEW_OLLAMA",
     "OLLAMA_HOST",
     "GITHUB_TOKEN",
     "GH_TOKEN",
@@ -29,8 +29,8 @@ def isolated_env(monkeypatch: pytest.MonkeyPatch, tmp_path_factory: pytest.TempP
     """Every test starts with no credentials, no gh CLI lookup and a private cache directory."""
     for var in _ENV_VARS:
         monkeypatch.delenv(var, raising=False)
-    monkeypatch.setenv("RG_NO_GH_CLI", "1")
-    monkeypatch.setenv("RG_CACHE_DIR", str(tmp_path_factory.mktemp("cache")))
+    monkeypatch.setenv("CODEVIEW_NO_GH_CLI", "1")
+    monkeypatch.setenv("CODEVIEW_CACHE_DIR", str(tmp_path_factory.mktemp("cache")))
 
 
 def make_diff(

@@ -13,12 +13,12 @@ from urllib.parse import quote, urlsplit
 
 import httpx
 
-from reviewgenie import __version__
+from codeview import __version__
 
 log = logging.getLogger(__name__)
 
 MAX_DIFF_BYTES = 8 * 1024 * 1024
-REVIEW_MARKER = "<!-- reviewgenie -->"
+REVIEW_MARKER = "<!-- codeview -->"
 _OWNER = r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})"
 _REPO = r"[A-Za-z0-9._-]{1,100}"
 _SHORT_RE = re.compile(rf"^(?P<owner>{_OWNER})/(?P<repo>{_REPO})#(?P<number>\d{{1,9}})$")
@@ -114,7 +114,7 @@ def resolve_token() -> str | None:
         if token := os.environ.get(env, "").strip():
             return token
     gh = shutil.which("gh")
-    if gh and os.environ.get("RG_NO_GH_CLI") is None:
+    if gh and os.environ.get("CODEVIEW_NO_GH_CLI") is None:
         try:
             out = subprocess.run(  # nosec B603
                 [gh, "auth", "token", "--hostname", web_host()],
@@ -159,7 +159,7 @@ class GitHubClient:
         headers = {
             "Accept": "application/vnd.github+json",
             "X-GitHub-Api-Version": "2022-11-28",
-            "User-Agent": f"reviewgenie/{__version__}",
+            "User-Agent": f"codeview/{__version__}",
         }
         if self.token:
             headers["Authorization"] = f"Bearer {self.token}"
@@ -284,7 +284,7 @@ class GitHubClient:
         return resp.text
 
     async def existing_comment_keys(self, ref: PRRef) -> set[str]:
-        """Fingerprints of inline comments ReviewGenie already posted, to avoid duplicates on re-runs."""
+        """Fingerprints of inline comments codeview already posted, to avoid duplicates on re-runs."""
         keys: set[str] = set()
         for page in range(1, 11):
             resp = await self._request(
@@ -296,7 +296,7 @@ class GitHubClient:
             for c in items:
                 body = c.get("body") or ""
                 if REVIEW_MARKER in body:
-                    m = re.search(r"<!-- rg:(\S+) -->", body)
+                    m = re.search(r"<!-- cv:(\S+) -->", body)
                     if m:
                         keys.add(m.group(1))
             if len(items) < 100:

@@ -7,14 +7,14 @@ import httpx
 import pytest
 import respx
 
+from codeview.cache import ResponseCache
+from codeview.config import Config
+from codeview.diff import parse_diff
+from codeview.llm import client as client_mod
+from codeview.llm.client import ChatClient, LLMError
+from codeview.llm.providers import PROVIDERS, candidate_providers
+from codeview.llm.review import SYSTEM_PROMPT, ai_review, extract_json, parse_ai_payload
 from conftest import SAMPLE_DIFF
-from reviewgenie.cache import ResponseCache
-from reviewgenie.config import Config
-from reviewgenie.diff import parse_diff
-from reviewgenie.llm import client as client_mod
-from reviewgenie.llm.client import ChatClient, LLMError
-from reviewgenie.llm.providers import PROVIDERS, candidate_providers
-from reviewgenie.llm.review import SYSTEM_PROMPT, ai_review, extract_json, parse_ai_payload
 
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
@@ -119,7 +119,7 @@ def test_candidate_providers(monkeypatch: pytest.MonkeyPatch) -> None:
     assert [p.name for p in candidate_providers("groq")] == ["groq"]
     with pytest.raises(ValueError, match="unknown provider"):
         candidate_providers("chatgpt")
-    monkeypatch.setenv("RG_OLLAMA", "1")
+    monkeypatch.setenv("CODEVIEW_OLLAMA", "1")
     assert "ollama" in [p.name for p in candidate_providers("auto")]
 
 
@@ -211,11 +211,11 @@ async def test_empty_completion_raises(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_missing_key_and_insecure_endpoints_are_refused(monkeypatch: pytest.MonkeyPatch) -> None:
     with pytest.raises(LLMError, match="missing API key"):
         ChatClient(PROVIDERS["gemini"], "m")
-    monkeypatch.setenv("RG_BASE_URL", "http://evil.example.com/v1")
-    monkeypatch.setenv("RG_API_KEY", "k")
+    monkeypatch.setenv("CODEVIEW_BASE_URL", "http://evil.example.com/v1")
+    monkeypatch.setenv("CODEVIEW_API_KEY", "k")
     with pytest.raises(LLMError, match="refusing plain-http"):
         ChatClient(PROVIDERS["openai-compatible"], "m")
-    monkeypatch.setenv("RG_BASE_URL", "http://localhost:8080/v1")
+    monkeypatch.setenv("CODEVIEW_BASE_URL", "http://localhost:8080/v1")
     ChatClient(PROVIDERS["openai-compatible"], "m")  # local http is fine
     monkeypatch.setenv("OLLAMA_HOST", "127.0.0.1:11434")
     ChatClient(PROVIDERS["ollama"], "m")  # no key needed locally
@@ -223,8 +223,8 @@ def test_missing_key_and_insecure_endpoints_are_refused(monkeypatch: pytest.Monk
 
 @respx.mock
 async def test_openai_compatible_uses_rg_model(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("RG_BASE_URL", "https://llm.example.com/v1")
-    monkeypatch.setenv("RG_MODEL", "my-model")
+    monkeypatch.setenv("CODEVIEW_BASE_URL", "https://llm.example.com/v1")
+    monkeypatch.setenv("CODEVIEW_MODEL", "my-model")
     route = respx.post("https://llm.example.com/v1/chat/completions").mock(
         return_value=httpx.Response(200, json=completion('{"summary": "fine", "findings": []}'))
     )
